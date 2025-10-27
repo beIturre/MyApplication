@@ -14,6 +14,7 @@ object AppRoutes {
     const val MAIN = "main"
 }
 
+
 /**
  * Composable principal de navegación.
  * Decide si mostrar la pantalla de Login o la pantalla principal (MainScreen)
