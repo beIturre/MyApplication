@@ -43,7 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,7 +95,7 @@ val sampleConcessions = listOf(
 )
 
 
-// --- Pantallas de Autenticación (sin cambios) ---
+// --- Pantallas de Autenticación ---
 @Composable
 fun AuthScreen(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
@@ -113,7 +113,7 @@ fun AuthScreen(authViewModel: AuthViewModel) {
 fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     val email by authViewModel.loginEmail
     val password by authViewModel.loginPassword
-    val errorMessage by authViewModel.errorMessage
+    val statusMessage by authViewModel.statusMessage
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -122,7 +122,7 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     ) {
         Text("Iniciar Sesión", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
-        errorMessage?.let {
+        statusMessage?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -144,7 +144,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
     val name by authViewModel.name
     val email by authViewModel.email
     val password by authViewModel.password
-    val errorMessage by authViewModel.errorMessage
+    val statusMessage by authViewModel.statusMessage
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -153,7 +153,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
     ) {
         Text("Crear Cuenta", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
-        errorMessage?.let {
+        statusMessage?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -250,11 +250,18 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             ProfileScreen(
                 user = user, 
                 onLogout = { authViewModel.logout() },
-                onNavigateToHistory = { navController.navigate("purchase_history") } 
+                onNavigateToHistory = { navController.navigate("purchase_history") },
+                onNavigateToChangePassword = { navController.navigate("change_password") }
             )
         }
         composable("purchase_history") { 
             PurchaseHistoryScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("change_password") { 
+            ChangePasswordScreen(
                 authViewModel = authViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -617,7 +624,7 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
 
 
 @Composable
-fun ProfileScreen(user: User, onLogout: () -> Unit, onNavigateToHistory: () -> Unit) {
+fun ProfileScreen(user: User, onLogout: () -> Unit, onNavigateToHistory: () -> Unit, onNavigateToChangePassword: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -627,7 +634,7 @@ fun ProfileScreen(user: User, onLogout: () -> Unit, onNavigateToHistory: () -> U
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onNavigateToHistory) { Text("Historial de compras") }
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { /* TODO */ }) { Text("Cambiar contraseña") }
+        Button(onClick = onNavigateToChangePassword) { Text("Cambiar contraseña") }
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { /* TODO */ }) { Text("Boletas") }
         Spacer(modifier = Modifier.height(32.dp))
@@ -670,6 +677,64 @@ fun PurchaseHistoryScreen(authViewModel: AuthViewModel, onNavigateBack: () -> Un
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ChangePasswordScreen(authViewModel: AuthViewModel, onNavigateBack: () -> Unit) {
+    val newPassword by authViewModel.newPassword
+    val confirmPassword by authViewModel.confirmPassword
+    val statusMessage by authViewModel.statusMessage
+
+    // Limpiar el mensaje de estado cuando la pantalla se va
+    DisposableEffect(Unit) {
+        onDispose {
+            authViewModel.clearStatusMessage()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Cambiar Contraseña") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(it).padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            OutlinedTextField(
+                value = newPassword,
+                onValueChange = { authViewModel.newPassword.value = it },
+                label = { Text("Nueva Contraseña") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { authViewModel.confirmPassword.value = it },
+                label = { Text("Confirmar Contraseña") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = { authViewModel.changePassword() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Actualizar Contraseña")
+            }
+            statusMessage?.let {
+                Spacer(modifier = Modifier.height(16.dp))
+                val isError = "coinciden" in it || "vacíos" in it || "Error" in it
+                Text(it, color = if (isError) MaterialTheme.colorScheme.error else Color.Green)
             }
         }
     }

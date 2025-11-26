@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 
 class AuthViewModel(private val repository: UserRepository) : ViewModel() {
 
-    // Estado para reflejar el estado de la autenticación
+    // Estado de autenticación
     private val _authState = mutableStateOf<AuthState>(AuthState.LoggedOut)
     val authState: State<AuthState> = _authState
 
@@ -16,17 +16,17 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
     private val _purchaseHistory = mutableStateOf<List<Purchase>>(emptyList())
     val purchaseHistory: State<List<Purchase>> = _purchaseHistory
 
-    // Campos del formulario de registro
+    // Campos de formularios
     val name = mutableStateOf("")
     val email = mutableStateOf("")
     val password = mutableStateOf("")
-
-    // Campos del formulario de inicio de sesión
     val loginEmail = mutableStateOf("")
     val loginPassword = mutableStateOf("")
+    val newPassword = mutableStateOf("")
+    val confirmPassword = mutableStateOf("")
     
-    // Mensajes de error
-    val errorMessage = mutableStateOf<String?>(null)
+    // Mensajes de estado (error o éxito)
+    val statusMessage = mutableStateOf<String?>(null)
 
     init {
         repository.getLoggedInUser()?.let { user ->
@@ -35,6 +35,7 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    // --- Lógica de Autenticación ---
     fun login() {
         val user = repository.findUser(loginEmail.value, loginPassword.value)
         if (user != null) {
@@ -43,33 +44,58 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
             loadPurchaseHistory()
             resetFields()
         } else {
-            errorMessage.value = "Email o contraseña incorrectos"
+            statusMessage.value = "Email o contraseña incorrectos"
         }
     }
 
     fun register() {
         if (name.value.isBlank() || email.value.isBlank() || password.value.isBlank()) {
-            errorMessage.value = "Todos los campos son obligatorios"
+            statusMessage.value = "Todos los campos son obligatorios"
             return
         }
-
         val newUser = User(name.value, email.value, password.value)
         if (repository.addUser(newUser)) {
             repository.loginUser(newUser.email)
             _authState.value = AuthState.LoggedIn(newUser)
-            loadPurchaseHistory() // Cargar historial (estará vacío)
+            loadPurchaseHistory()
             resetFields()
         } else {
-            errorMessage.value = "El email ya está en uso"
+            statusMessage.value = "El email ya está en uso"
         }
     }
 
     fun logout() {
         repository.logoutUser()
         _authState.value = AuthState.LoggedOut
-        _purchaseHistory.value = emptyList() // Limpiar historial
+        _purchaseHistory.value = emptyList()
     }
 
+    // --- Lógica de Contraseña ---
+    fun changePassword() {
+        val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
+
+        if (newPassword.value.isBlank() || confirmPassword.value.isBlank()) {
+            statusMessage.value = "Los campos no pueden estar vacíos"
+            return
+        }
+        if (newPassword.value != confirmPassword.value) {
+            statusMessage.value = "Las contraseñas no coinciden"
+            return
+        }
+
+        val success = repository.changePassword(currentUser.email, newPassword.value)
+        if (success) {
+            statusMessage.value = "Contraseña actualizada con éxito"
+            // Opcional: cerrar sesión después de cambiar la contraseña
+            // logout()
+        } else {
+            statusMessage.value = "Error al actualizar la contraseña"
+        }
+        newPassword.value = ""
+        confirmPassword.value = ""
+    }
+
+    // --- Lógica de Compras ---
     fun addPurchase(movieTitle: String, time: String, seatIds: String) {
         val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
         val newPurchase = Purchase(
@@ -80,12 +106,17 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
             purchaseTimestamp = System.currentTimeMillis()
         )
         repository.savePurchase(newPurchase)
-        loadPurchaseHistory() // Recargar el historial
+        loadPurchaseHistory()
     }
 
     private fun loadPurchaseHistory() {
         val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
         _purchaseHistory.value = repository.getPurchaseHistory(currentUser.email)
+    }
+    
+    // --- Utilidades ---
+    fun clearStatusMessage() {
+        statusMessage.value = null
     }
 
     private fun resetFields() {
@@ -94,7 +125,9 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
         password.value = ""
         loginEmail.value = ""
         loginPassword.value = ""
-        errorMessage.value = null
+        newPassword.value = ""
+        confirmPassword.value = ""
+        statusMessage.value = null
     }
 }
 

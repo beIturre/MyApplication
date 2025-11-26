@@ -53,6 +53,19 @@ class UserRepository(context: Context) {
         return getUsers().find { it.email == email }
     }
 
+    fun changePassword(email: String, newPassword: String): Boolean {
+        val users = getUsers().toMutableSet()
+        val userToUpdate = users.find { it.email == email }
+        if (userToUpdate != null) {
+            val updatedUser = userToUpdate.copy(password = newPassword)
+            users.remove(userToUpdate)
+            users.add(updatedUser)
+            saveUsers(users)
+            return true
+        }
+        return false // Usuario no encontrado
+    }
+
     private fun getUsers(): Set<User> {
         val userStrings = prefs.getStringSet(KEY_USERS, emptySet()) ?: emptySet()
         return userStrings.mapNotNull { userJson ->
