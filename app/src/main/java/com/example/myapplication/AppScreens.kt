@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +49,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -67,6 +71,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -85,7 +90,7 @@ import kotlin.random.Random
 
 // --- Clases de Datos (sin cambios) ---
 data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String)
-data class ConcessionItem(val name: String, val price: Double)
+data class ConcessionItem(val name: String, val price: Double, val imageUrl: String)
 data class Seat(val id: String, val row: Char, val number: Int, var status: SeatStatus)
 enum class SeatStatus { AVAILABLE, SELECTED, OCCUPIED }
 
@@ -100,9 +105,12 @@ val sampleMovies = listOf(
     Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2025", listOf("18:30"), "https://picsum.photos/seed/cero/400/600")
 )
 val sampleConcessions = listOf(
-    ConcessionItem("Palomitas Grandes", 5.50), ConcessionItem("Refresco Mediano", 3.75),
-    ConcessionItem("Nachos con Queso", 6.20), ConcessionItem("Hot Dog", 4.50),
-    ConcessionItem("Chocolates", 2.80), ConcessionItem("Agua Embotellada", 2.00)
+    ConcessionItem("Palomitas Grandes", 5.50, "https://picsum.photos/seed/popcorn/400/400"),
+    ConcessionItem("Refresco Mediano", 3.75, "https://picsum.photos/seed/soda/400/400"),
+    ConcessionItem("Nachos con Queso", 6.20, "https://picsum.photos/seed/nachos/400/400"),
+    ConcessionItem("Hot Dog", 4.50, "https://picsum.photos/seed/hotdog/400/400"),
+    ConcessionItem("Chocolates", 2.80, "https://picsum.photos/seed/chocolate/400/400"),
+    ConcessionItem("Agua Embotellada", 2.00, "https://picsum.photos/seed/water/400/400")
 )
 
 
@@ -127,7 +135,9 @@ fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
     val statusMessage by authViewModel.statusMessage
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -158,7 +168,9 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
     val statusMessage by authViewModel.statusMessage
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -253,26 +265,26 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
 
     NavHost(navController = navController, startDestination = "movies", modifier = Modifier.padding(padding)) {
         composable("home") { HomeScreen() }
-        composable("movies") { 
-            MoviesScreen(onMovieClick = { movieId -> navController.navigate("movie_detail/$movieId") }) 
+        composable("movies") {
+            MoviesScreen(onMovieClick = { movieId -> navController.navigate("movie_detail/$movieId") })
         }
         composable("concessions") { ConcessionsScreen() }
-        composable("profile") { 
+        composable("profile") {
             ProfileScreen(
-                user = user, 
+                user = user,
                 authViewModel = authViewModel,
                 onLogout = { authViewModel.logout() },
                 onNavigateToHistory = { navController.navigate("purchase_history") },
                 onNavigateToChangePassword = { navController.navigate("change_password") }
             )
         }
-        composable("purchase_history") { 
+        composable("purchase_history") {
             PurchaseHistoryScreen(
                 authViewModel = authViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable("change_password") { 
+        composable("change_password") {
             ChangePasswordScreen(
                 authViewModel = authViewModel,
                 onNavigateBack = { navController.popBackStack() }
@@ -286,7 +298,7 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             val movieId = backStackEntry.arguments?.getInt("movieId")
             sampleMovies.find { it.id == movieId }?.let { movie ->
                 MovieDetailScreen(
-                    movie = movie, 
+                    movie = movie,
                     onNavigateBack = { navController.popBackStack() },
                     onContinue = { time -> navController.navigate("seat_selection/${movie.id}/$time") }
                 )
@@ -329,7 +341,7 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             sampleMovies.find { it.id == movieId }?.let { movie ->
                  PaymentScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onConfirmPayment = { 
+                    onConfirmPayment = {
                         authViewModel.addPurchase(movie.title, time, seatIds)
                         navController.navigate("confirmation/${movie.id}/$time/$seatIds")
                     }
@@ -353,7 +365,7 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
                     movie = movie,
                     time = time,
                     selectedSeatIds = seatIds,
-                    onFinish = { 
+                    onFinish = {
                         navController.navigate("movies") {
                             popUpTo("movies") { inclusive = true }
                         }
@@ -393,15 +405,58 @@ fun MoviesScreen(onMovieClick: (Int) -> Unit) {
 
 @Composable
 fun ConcessionsScreen() {
-    LazyColumn(contentPadding = PaddingValues(16.dp)) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         items(sampleConcessions) { item ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            ConcessionCard(item = item, onAddToCart = { /* TODO: Add to cart logic */ })
+        }
+    }
+}
+
+@Composable
+fun ConcessionCard(item: ConcessionItem, onAddToCart: () -> Unit) {
+    Card(
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = "Imagen de ${item.name}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentScale = ContentScale.Crop
+            )
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(item.name, fontSize = 18.sp)
-                Text("$%.2f".format(item.price), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "$%.2f".format(item.price),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onAddToCart,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Añadir")
+                }
             }
         }
     }
@@ -427,13 +482,17 @@ fun MovieDetailScreen(movie: Movie, onNavigateBack: () -> Unit, onContinue: (Str
             Button(
                 onClick = { selectedTime?.let { onContinue(it) } },
                 enabled = selectedTime != null,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
                 Text("Continuar")
             }
         }
-    ) { paddingValues -> 
-        LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+    ) { paddingValues ->
+        LazyColumn(modifier = Modifier
+            .padding(paddingValues)
+            .padding(16.dp)) {
             item {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     AsyncImage(
@@ -476,7 +535,9 @@ fun MovieDetailScreen(movie: Movie, onNavigateBack: () -> Unit, onContinue: (Str
 @Composable
 fun SeatLegendItem(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(modifier = Modifier.size(16.dp).background(color, RoundedCornerShape(2.dp)))
+        Box(modifier = Modifier
+            .size(16.dp)
+            .background(color, RoundedCornerShape(2.dp)))
         Text(text, fontSize = 12.sp)
     }
 }
@@ -510,7 +571,9 @@ fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, 
         bottomBar = {
              Button(
                 onClick = { onConfirm(seats.filter { it.status == SeatStatus.SELECTED }) },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 enabled = seats.any { it.status == SeatStatus.SELECTED }
             ) {
                 Text("Confirmar Selección")
@@ -518,10 +581,14 @@ fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, 
         }
     ) {
         Column(
-            modifier = Modifier.padding(it).padding(16.dp),
+            modifier = Modifier
+                .padding(it)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("PANTALLA", modifier = Modifier.background(Color.Gray, RoundedCornerShape(4.dp)).padding(horizontal = 24.dp, vertical = 4.dp), color = Color.White, fontWeight = FontWeight.Bold)
+            Text("PANTALLA", modifier = Modifier
+                .background(Color.Gray, RoundedCornerShape(4.dp))
+                .padding(horizontal = 24.dp, vertical = 4.dp), color = Color.White, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(24.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -584,7 +651,9 @@ fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
             })
         }
     ) {
-        Column(modifier = Modifier.padding(it).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = Modifier
+            .padding(it)
+            .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Transbank", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF005EB8))
             Spacer(modifier = Modifier.height(32.dp))
             OutlinedTextField(value = cardNumber, onValueChange = { cardNumber = it }, label = { Text("Número de Tarjeta") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
@@ -607,13 +676,18 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
     Scaffold(
         topBar = { TopAppBar(title = { Text("¡Compra Exitosa!") }) },
         bottomBar = {
-            Button(onClick = onFinish, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Button(onClick = onFinish, modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)) {
                 Text("Finalizar")
             }
         }
     ) {
         Column(
-            modifier = Modifier.padding(it).padding(16.dp).fillMaxSize(),
+            modifier = Modifier
+                .padding(it)
+                .padding(16.dp)
+                .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -663,7 +737,9 @@ fun ProfileScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
@@ -781,13 +857,17 @@ fun PurchaseHistoryScreen(authViewModel: AuthViewModel, onNavigateBack: () -> Un
         }
     ) {
         if (purchaseHistory.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(it), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(it), contentAlignment = Alignment.Center) {
                 Text("Aún no has realizado ninguna compra.")
             }
         } else {
             LazyColumn(modifier = Modifier.padding(it), contentPadding = PaddingValues(16.dp)) {
                 items(purchaseHistory) { purchase ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Card(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(purchase.movieTitle, style = MaterialTheme.typography.titleLarge)
                             Spacer(modifier = Modifier.height(4.dp))
@@ -830,7 +910,10 @@ fun ChangePasswordScreen(authViewModel: AuthViewModel, onNavigateBack: () -> Uni
         }
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(it).padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(it)
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             OutlinedTextField(
