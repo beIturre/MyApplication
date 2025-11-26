@@ -8,27 +8,30 @@ import androidx.lifecycle.ViewModelProvider
 
 class AuthViewModel(private val repository: UserRepository) : ViewModel() {
 
-    // Estado para refelejar el estado de la autenticación
+    // Estado para reflejar el estado de la autenticación
     private val _authState = mutableStateOf<AuthState>(AuthState.LoggedOut)
     val authState: State<AuthState> = _authState
 
-    // Estado para los campos del formulario de registro
+    // Historial de compras
+    private val _purchaseHistory = mutableStateOf<List<Purchase>>(emptyList())
+    val purchaseHistory: State<List<Purchase>> = _purchaseHistory
+
+    // Campos del formulario de registro
     val name = mutableStateOf("")
     val email = mutableStateOf("")
     val password = mutableStateOf("")
 
-    // Estado para los campos del formulario de inicio de sesión
+    // Campos del formulario de inicio de sesión
     val loginEmail = mutableStateOf("")
     val loginPassword = mutableStateOf("")
     
-    // Estado para mensajes de error
+    // Mensajes de error
     val errorMessage = mutableStateOf<String?>(null)
 
     init {
-        // Comprobar si ya hay un usuario que ha iniciado sesión
-        val loggedInUser = repository.getLoggedInUser()
-        if (loggedInUser != null) {
-            _authState.value = AuthState.LoggedIn(loggedInUser)
+        repository.getLoggedInUser()?.let { user ->
+            _authState.value = AuthState.LoggedIn(user)
+            loadPurchaseHistory()
         }
     }
 
@@ -37,6 +40,7 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
         if (user != null) {
             repository.loginUser(user.email)
             _authState.value = AuthState.LoggedIn(user)
+            loadPurchaseHistory()
             resetFields()
         } else {
             errorMessage.value = "Email o contraseña incorrectos"
@@ -50,12 +54,10 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
         }
 
         val newUser = User(name.value, email.value, password.value)
-        val success = repository.addUser(newUser)
-
-        if (success) {
-            // Iniciar sesión automáticamente después del registro
+        if (repository.addUser(newUser)) {
             repository.loginUser(newUser.email)
             _authState.value = AuthState.LoggedIn(newUser)
+            loadPurchaseHistory() // Cargar historial (estará vacío)
             resetFields()
         } else {
             errorMessage.value = "El email ya está en uso"
@@ -65,9 +67,27 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
     fun logout() {
         repository.logoutUser()
         _authState.value = AuthState.LoggedOut
+        _purchaseHistory.value = emptyList() // Limpiar historial
     }
 
-    // Resetea los campos de los formularios y los mensajes de error
+    fun addPurchase(movieTitle: String, time: String, seatIds: String) {
+        val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
+        val newPurchase = Purchase(
+            userEmail = currentUser.email,
+            movieTitle = movieTitle,
+            time = time,
+            seatIds = seatIds,
+            purchaseTimestamp = System.currentTimeMillis()
+        )
+        repository.savePurchase(newPurchase)
+        loadPurchaseHistory() // Recargar el historial
+    }
+
+    private fun loadPurchaseHistory() {
+        val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
+        _purchaseHistory.value = repository.getPurchaseHistory(currentUser.email)
+    }
+
     private fun resetFields() {
         name.value = ""
         email.value = ""
@@ -78,7 +98,7 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
     }
 }
 
-// Sealed class para representar los diferentes estados de autenticación
+// --- Clases de Estado y Factory ---
 sealed class AuthState {
     object LoggedOut : AuthState()
     data class LoggedIn(val user: User) : AuthState()

@@ -43,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +67,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.random.Random
 
 // --- Clases de Datos (sin cambios) ---
@@ -91,7 +95,7 @@ val sampleConcessions = listOf(
 )
 
 
-// --- Pantallas de Autenticación ---
+// --- Pantallas de Autenticación (sin cambios) ---
 @Composable
 fun AuthScreen(authViewModel: AuthViewModel) {
     val navController = rememberNavController()
@@ -198,7 +202,6 @@ fun MainScreen(user: User, authViewModel: AuthViewModel) {
         MainContentNavigation(
             navController = mainNavController,
             padding = paddingValues,
-            user = user,
             authViewModel = authViewModel
         )
     }
@@ -234,14 +237,28 @@ fun MainBottomNavigation(navController: NavHostController) {
 }
 
 @Composable
-fun MainContentNavigation(navController: NavHostController, padding: PaddingValues, user: User, authViewModel: AuthViewModel) {
+fun MainContentNavigation(navController: NavHostController, padding: PaddingValues, authViewModel: AuthViewModel) {
+    val user = (authViewModel.authState.value as AuthState.LoggedIn).user
+
     NavHost(navController = navController, startDestination = "movies", modifier = Modifier.padding(padding)) {
         composable("home") { HomeScreen() }
         composable("movies") { 
             MoviesScreen(onMovieClick = { movieId -> navController.navigate("movie_detail/$movieId") }) 
         }
         composable("concessions") { ConcessionsScreen() }
-        composable("profile") { ProfileScreen(user = user, onLogout = { authViewModel.logout() }) }
+        composable("profile") { 
+            ProfileScreen(
+                user = user, 
+                onLogout = { authViewModel.logout() },
+                onNavigateToHistory = { navController.navigate("purchase_history") } 
+            )
+        }
+        composable("purchase_history") { 
+            PurchaseHistoryScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
         
         composable(
             route = "movie_detail/{movieId}",
@@ -290,10 +307,15 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             val movieId = backStackEntry.arguments?.getInt("movieId")
             val time = backStackEntry.arguments?.getString("time") ?: ""
             val seatIds = backStackEntry.arguments?.getString("seatIds") ?: ""
-            PaymentScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onConfirmPayment = { navController.navigate("confirmation/${movieId}/$time/$seatIds") }
-            )
+            sampleMovies.find { it.id == movieId }?.let { movie ->
+                 PaymentScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onConfirmPayment = { 
+                        authViewModel.addPurchase(movie.title, time, seatIds)
+                        navController.navigate("confirmation/${movie.id}/$time/$seatIds")
+                    }
+                )
+            }
         }
         
         composable(
@@ -329,8 +351,6 @@ fun HomeScreen() {
         Text("Ventana de Inicio", fontSize = 22.sp)
     }
 }
-
-// Las siguientes pantallas (MoviesScreen, ConcessionsScreen, etc.) permanecen sin cambios
 
 @Composable
 fun MoviesScreen(onMovieClick: (Int) -> Unit) {
@@ -394,7 +414,6 @@ fun MovieDetailScreen(movie: Movie, onNavigateBack: () -> Unit, onContinue: (Str
             }
         }
     ) { paddingValues -> 
-        // El resto de esta pantalla no cambia
         LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             item {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -446,7 +465,6 @@ fun SeatLegendItem(color: Color, text: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, onConfirm: (List<Seat>) -> Unit) {
-    // Esta pantalla no cambia
     val seatRows = 'A'..'H'
     val seatNumbers = 1..8
     var seats by remember { mutableStateOf(
@@ -534,7 +552,6 @@ fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
-    // Esta pantalla no cambia
     var cardNumber by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
@@ -568,7 +585,6 @@ fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFinish: () -> Unit) {
-    // Esta pantalla no cambia
     Scaffold(
         topBar = { TopAppBar(title = { Text("¡Compra Exitosa!") }) },
         bottomBar = {
@@ -601,7 +617,7 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
 
 
 @Composable
-fun ProfileScreen(user: User, onLogout: () -> Unit) {
+fun ProfileScreen(user: User, onLogout: () -> Unit, onNavigateToHistory: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -609,7 +625,7 @@ fun ProfileScreen(user: User, onLogout: () -> Unit) {
     ) {
         Text("Hola, ${user.name}!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { /* TODO */ }) { Text("Historial de compras") }
+        Button(onClick = onNavigateToHistory) { Text("Historial de compras") }
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { /* TODO */ }) { Text("Cambiar contraseña") }
         Spacer(modifier = Modifier.height(16.dp))
@@ -617,6 +633,51 @@ fun ProfileScreen(user: User, onLogout: () -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onLogout) { Text("Cerrar sesión") }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PurchaseHistoryScreen(authViewModel: AuthViewModel, onNavigateBack: () -> Unit) {
+    val purchaseHistory by authViewModel.purchaseHistory
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Historial de Compras") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                }
+            )
+        }
+    ) {
+        if (purchaseHistory.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().padding(it), contentAlignment = Alignment.Center) {
+                Text("Aún no has realizado ninguna compra.")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.padding(it), contentPadding = PaddingValues(16.dp)) {
+                items(purchaseHistory) { purchase ->
+                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(purchase.movieTitle, style = MaterialTheme.typography.titleLarge)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Fecha: ${purchase.purchaseTimestamp.toFormattedDateString()}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Hora: ${purchase.time}", style = MaterialTheme.typography.bodyLarge)
+                            Text("Asientos: ${purchase.seatIds}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun Long.toFormattedDateString(): String {
+    val sdf = SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale.getDefault())
+    return sdf.format(Date(this))
 }
 
 data class BottomNavItem(val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val route: String)

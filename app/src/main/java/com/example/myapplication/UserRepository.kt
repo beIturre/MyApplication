@@ -4,8 +4,15 @@ import android.content.Context
 import android.content.SharedPreferences
 import org.json.JSONObject
 
-// Clase de datos para representar a un usuario
+// --- Clases de Datos ---
 data class User(val name: String, val email: String, val password:  String)
+data class Purchase(
+    val userEmail: String,
+    val movieTitle: String,
+    val time: String,
+    val seatIds: String,
+    val purchaseTimestamp: Long
+)
 
 class UserRepository(context: Context) {
 
@@ -15,57 +22,37 @@ class UserRepository(context: Context) {
     companion object {
         private const val KEY_USERS = "users"
         private const val KEY_LOGGED_IN_USER_EMAIL = "logged_in_user_email"
+        private const val KEY_PURCHASES = "purchases"
     }
 
-    /**
-     * Agrega un nuevo usuario al conjunto de usuarios guardados.
-     * Devuelve true si el usuario se agregó correctamente, false si el email ya existe.
-     */
+    // --- Lógica de Usuario ---
     fun addUser(user: User): Boolean {
         val users = getUsers().toMutableSet()
         if (users.any { it.email == user.email }) {
-            return false // El email ya está registrado
+            return false
         }
         users.add(user)
         saveUsers(users)
         return true
     }
 
-    /**
-     * Busca un usuario por su email y contraseña.
-     * Devuelve el objeto User si las credenciales son correctas, de lo contrario null.
-     */
     fun findUser(email: String, password:  String): User? {
         return getUsers().find { it.email == email && it.password == password }
     }
     
-    /**
-     * Guarda el email del usuario que ha iniciado sesión.
-     */
     fun loginUser(email: String) {
         prefs.edit().putString(KEY_LOGGED_IN_USER_EMAIL, email).apply()
     }
 
-    /**
-     * Limpia el email del usuario que ha iniciado sesión.
-     */
     fun logoutUser() {
         prefs.edit().remove(KEY_LOGGED_IN_USER_EMAIL).apply()
     }
 
-    /**
-     * Obtiene el usuario que ha iniciado sesión.
-     * Devuelve null si no hay ninguno.
-     */
     fun getLoggedInUser(): User? {
         val email = prefs.getString(KEY_LOGGED_IN_USER_EMAIL, null) ?: return null
         return getUsers().find { it.email == email }
     }
 
-
-    /**
-     * Obtiene todos los usuarios guardados.
-     */
     private fun getUsers(): Set<User> {
         val userStrings = prefs.getStringSet(KEY_USERS, emptySet()) ?: emptySet()
         return userStrings.mapNotNull { userJson ->
@@ -76,15 +63,10 @@ class UserRepository(context: Context) {
                     email = json.getString("email"),
                     password = json.getString("password")
                 )
-            } catch (e: Exception) {
-                null // Ignorar JSON mal formado
-            }
+            } catch (e: Exception) { null }
         }.toSet()
     }
 
-    /**
-     * Guarda un conjunto de usuarios en SharedPreferences.
-     */
     private fun saveUsers(users: Set<User>) {
         val userStrings = users.map { user ->
             JSONObject().apply {
@@ -94,5 +76,45 @@ class UserRepository(context: Context) {
             }.toString()
         }.toSet()
         prefs.edit().putStringSet(KEY_USERS, userStrings).apply()
+    }
+
+    // --- Lógica de Compras ---
+    fun savePurchase(purchase: Purchase) {
+        val allPurchases = getAllPurchases().toMutableList()
+        allPurchases.add(purchase)
+        val purchaseStrings = allPurchases.map { 
+            JSONObject().apply {
+                put("userEmail", it.userEmail)
+                put("movieTitle", it.movieTitle)
+                put("time", it.time)
+                put("seatIds", it.seatIds)
+                put("purchaseTimestamp", it.purchaseTimestamp)
+            }.toString()
+        }.toSet()
+        prefs.edit().putStringSet(KEY_PURCHASES, purchaseStrings).apply()
+    }
+
+    fun getPurchaseHistory(userEmail: String): List<Purchase> {
+        return getAllPurchases()
+            .filter { it.userEmail == userEmail }
+            .sortedByDescending { it.purchaseTimestamp }
+    }
+
+    private fun getAllPurchases(): List<Purchase> {
+        val purchaseStrings = prefs.getStringSet(KEY_PURCHASES, emptySet()) ?: emptySet()
+        return purchaseStrings.mapNotNull { purchaseJson ->
+            try {
+                val json = JSONObject(purchaseJson)
+                Purchase(
+                    userEmail = json.getString("userEmail"),
+                    movieTitle = json.getString("movieTitle"),
+                    time = json.getString("time"),
+                    seatIds = json.getString("seatIds"),
+                    purchaseTimestamp = json.getLong("purchaseTimestamp")
+                )
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }
