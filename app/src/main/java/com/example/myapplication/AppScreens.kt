@@ -70,9 +70,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -643,6 +648,13 @@ fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
     var cardNumber by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
+    val isFormValid by remember(cardNumber, expiryDate, cvv) {
+        mutableStateOf(
+            cardNumber.length == 16 &&
+            expiryDate.length == 4 &&
+            cvv.length == 3
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -658,19 +670,108 @@ fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
             .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Transbank", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF005EB8))
             Spacer(modifier = Modifier.height(32.dp))
-            OutlinedTextField(value = cardNumber, onValueChange = { cardNumber = it }, label = { Text("Número de Tarjeta") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = cardNumber,
+                onValueChange = { if (it.length <= 16) cardNumber = it },
+                label = { Text("Número de Tarjeta") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                visualTransformation = CardNumberVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(value = expiryDate, onValueChange = { expiryDate = it }, label = { Text("MM/AA") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = cvv, onValueChange = { cvv = it }, label = { Text("CVV") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = expiryDate,
+                    onValueChange = { if (it.length <= 4) expiryDate = it },
+                    label = { Text("MM/AA") },
+                    visualTransformation = ExpiryDateVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = cvv,
+                    onValueChange = { if (it.length <= 3) cvv = it },
+                    label = { Text("CVV") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f)
+                )
             }
             Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = onConfirmPayment, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onConfirmPayment,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isFormValid
+            ) {
                 Text("Ir al Pago")
             }
         }
     }
 }
+
+// --- Visual Transformations for Payment Screen ---
+class CardNumberVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = if (text.text.length >= 16) text.text.substring(0..15) else text.text
+        val annotatedString = buildAnnotatedString {
+            for (i in trimmed.indices) {
+                append(trimmed[i])
+                if (i % 4 == 3 && i < 15) {
+                    append(" ")
+                }
+            }
+        }
+
+        val creditCardOffsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 3) return offset
+                if (offset <= 7) return offset + 1
+                if (offset <= 11) return offset + 2
+                if (offset <= 16) return offset + 3
+                return 19
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 4) return offset
+                if (offset <= 9) return offset - 1
+                if (offset <= 14) return offset - 2
+                if (offset <= 19) return offset - 3
+                return 16
+            }
+        }
+        return TransformedText(annotatedString, creditCardOffsetTranslator)
+    }
+}
+
+class ExpiryDateVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = if (text.text.length >= 4) text.text.substring(0..3) else text.text
+        val annotatedString = buildAnnotatedString {
+            for (i in trimmed.indices) {
+                append(trimmed[i])
+                if (i == 1) {
+                    append("/")
+                }
+            }
+        }
+
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 1) return offset
+                if (offset <= 4) return offset + 1
+                return 5
+            }
+
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 2) return offset
+                if (offset <= 5) return offset - 1
+                return 4
+            }
+        }
+
+        return TransformedText(annotatedString, offsetMapping)
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
