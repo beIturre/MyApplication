@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import org.json.JSONObject
 
 // --- Clases de Datos ---
@@ -19,7 +20,7 @@ data class Purchase(
     val purchaseTimestamp: Long
 )
 
-class UserRepository(context: Context) {
+class UserRepository(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)

@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,6 +69,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -717,10 +719,24 @@ fun ProfileScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToChangePassword: () -> Unit
 ) {
+    val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
+        contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri: Uri? ->
-            authViewModel.updateUserProfileImage(uri)
+            if (uri != null) {
+                // Release persisted permissions for the old URI if it exists
+                user.profileImageUri?.let { oldUriString ->
+                    try {
+                        val oldUri = Uri.parse(oldUriString)
+                        context.contentResolver.releasePersistableUriPermission(oldUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    } catch (e: Exception) {
+                        // Handle exceptions, e.g., the URI is invalid or permission was already revoked
+                    }
+                }
+                // Take persistable permissions for the new URI
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                authViewModel.updateUserProfileImage(uri)
+            }
         }
     )
 
@@ -747,7 +763,7 @@ fun ProfileScreen(
                         .size(120.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primaryContainer)
-                        .clickable { launcher.launch("image/*") },
+                        .clickable { launcher.launch(arrayOf("image/*")) },
                     contentAlignment = Alignment.Center
                 ) {
                     val imageUri = user.profileImageUri?.let { Uri.parse(it) }
