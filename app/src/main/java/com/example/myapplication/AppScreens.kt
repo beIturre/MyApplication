@@ -39,6 +39,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -53,8 +54,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -65,16 +68,13 @@ import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import kotlin.random.Random
 
-// --- Clases de Datos ---
-data class Movie(
-    val id: Int, val title: String, val director: String, val genre: String, 
-    val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String
-)
+// --- Clases de Datos (sin cambios) ---
+data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String)
 data class ConcessionItem(val name: String, val price: Double)
 data class Seat(val id: String, val row: Char, val number: Int, var status: SeatStatus)
 enum class SeatStatus { AVAILABLE, SELECTED, OCCUPIED }
 
-// --- Datos de Ejemplo ---
+// --- Datos de Ejemplo (sin cambios) ---
 val sampleMovies = listOf(
     Movie(1, "Mundos Paralelos", "Dr. A. Einstein", "Ciencia Ficción", "Un viaje a través de dimensiones...", "25 Dic 2024", listOf("15:00", "17:30", "20:00"), "https://picsum.photos/seed/mundos/400/600"),
     Movie(2, "El Último Código", "Sra. L. Lovelace", "Thriller", "Una programadora descubre un secreto...", "10 Ene 2025", listOf("16:15", "18:45", "21:15"), "https://picsum.photos/seed/codigo/400/600"),
@@ -84,7 +84,6 @@ val sampleMovies = listOf(
     Movie(6, "Planeta Olvidado", "Sr. G. Lucas", "Ciencia Ficción", "Exploradores espaciales encuentran un planeta...", "18 May 2025", listOf("16:00", "19:45", "22:30"), "https://picsum.photos/seed/planeta/400/600"),
     Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2025", listOf("18:30"), "https://picsum.photos/seed/cero/400/600")
 )
-
 val sampleConcessions = listOf(
     ConcessionItem("Palomitas Grandes", 5.50), ConcessionItem("Refresco Mediano", 3.75),
     ConcessionItem("Nachos con Queso", 6.20), ConcessionItem("Hot Dog", 4.50),
@@ -92,33 +91,87 @@ val sampleConcessions = listOf(
 )
 
 
+// --- Pantallas de Autenticación ---
 @Composable
-fun LoginScreen(onLogin: (String) -> Unit) {
-    var username by remember { mutableStateOf("") }
+fun AuthScreen(authViewModel: AuthViewModel) {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = "login") {
+        composable("login") {
+            LoginScreen(navController = navController, authViewModel = authViewModel)
+        }
+        composable("register") {
+            RegisterScreen(navController = navController, authViewModel = authViewModel)
+        }
+    }
+}
+
+@Composable
+fun LoginScreen(navController: NavController, authViewModel: AuthViewModel) {
+    val email by authViewModel.loginEmail
+    val password by authViewModel.loginPassword
+    val errorMessage by authViewModel.errorMessage
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Bienvenido al Cine", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(32.dp))
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Ingresa tu nombre") },
-            singleLine = true
-        )
+        Text("Iniciar Sesión", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { onLogin(username) }, enabled = username.isNotBlank()) {
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        OutlinedTextField(value = email, onValueChange = { authViewModel.loginEmail.value = it }, label = { Text("Email") })
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = password, onValueChange = { authViewModel.loginPassword.value = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation())
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { authViewModel.login() }) {
             Text("Entrar")
+        }
+        TextButton(onClick = { navController.navigate("register") }) {
+            Text("¿No tienes una cuenta? Regístrate")
         }
     }
 }
 
+@Composable
+fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
+    val name by authViewModel.name
+    val email by authViewModel.email
+    val password by authViewModel.password
+    val errorMessage by authViewModel.errorMessage
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Crear Cuenta", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        errorMessage?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        OutlinedTextField(value = name, onValueChange = { authViewModel.name.value = it }, label = { Text("Nombre") })
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = email, onValueChange = { authViewModel.email.value = it }, label = { Text("Email") })
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(value = password, onValueChange = { authViewModel.password.value = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation())
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { authViewModel.register() }) {
+            Text("Registrarse")
+        }
+        TextButton(onClick = { navController.popBackStack() }) {
+            Text("¿Ya tienes una cuenta? Inicia Sesión")
+        }
+    }
+}
+
+// --- Pantallas Principales ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(username: String, onLogout: () -> Unit) {
+fun MainScreen(user: User, authViewModel: AuthViewModel) {
     val mainNavController = rememberNavController()
 
     Scaffold(
@@ -131,8 +184,8 @@ fun MainScreen(username: String, onLogout: () -> Unit) {
                     actionIconContentColor = Color.White
                 ),
                 actions = {
-                    Text(text = "Hola, $username", modifier = Modifier.padding(end = 8.dp), fontWeight = FontWeight.Medium)
-                    IconButton(onClick = onLogout) {
+                    Text(text = "Hola, ${user.name}", modifier = Modifier.padding(end = 8.dp), fontWeight = FontWeight.Medium)
+                    IconButton(onClick = { authViewModel.logout() }) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar sesión")
                     }
                 }
@@ -145,8 +198,8 @@ fun MainScreen(username: String, onLogout: () -> Unit) {
         MainContentNavigation(
             navController = mainNavController,
             padding = paddingValues,
-            username = username,
-            onLogout = onLogout
+            user = user,
+            authViewModel = authViewModel
         )
     }
 }
@@ -181,14 +234,14 @@ fun MainBottomNavigation(navController: NavHostController) {
 }
 
 @Composable
-fun MainContentNavigation(navController: NavHostController, padding: PaddingValues, username: String, onLogout: () -> Unit) {
+fun MainContentNavigation(navController: NavHostController, padding: PaddingValues, user: User, authViewModel: AuthViewModel) {
     NavHost(navController = navController, startDestination = "movies", modifier = Modifier.padding(padding)) {
         composable("home") { HomeScreen() }
         composable("movies") { 
             MoviesScreen(onMovieClick = { movieId -> navController.navigate("movie_detail/$movieId") }) 
         }
         composable("concessions") { ConcessionsScreen() }
-        composable("profile") { ProfileScreen(username = username, onLogout = onLogout) }
+        composable("profile") { ProfileScreen(user = user, onLogout = { authViewModel.logout() }) }
         
         composable(
             route = "movie_detail/{movieId}",
@@ -277,6 +330,8 @@ fun HomeScreen() {
     }
 }
 
+// Las siguientes pantallas (MoviesScreen, ConcessionsScreen, etc.) permanecen sin cambios
+
 @Composable
 fun MoviesScreen(onMovieClick: (Int) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp)) {
@@ -338,8 +393,9 @@ fun MovieDetailScreen(movie: Movie, onNavigateBack: () -> Unit, onContinue: (Str
                 Text("Continuar")
             }
         }
-    ) {
-        LazyColumn(modifier = Modifier.padding(it).padding(16.dp)) {
+    ) { paddingValues -> 
+        // El resto de esta pantalla no cambia
+        LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
             item {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     AsyncImage(
@@ -390,6 +446,7 @@ fun SeatLegendItem(color: Color, text: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, onConfirm: (List<Seat>) -> Unit) {
+    // Esta pantalla no cambia
     val seatRows = 'A'..'H'
     val seatNumbers = 1..8
     var seats by remember { mutableStateOf(
@@ -477,6 +534,7 @@ fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
+    // Esta pantalla no cambia
     var cardNumber by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
@@ -510,6 +568,7 @@ fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFinish: () -> Unit) {
+    // Esta pantalla no cambia
     Scaffold(
         topBar = { TopAppBar(title = { Text("¡Compra Exitosa!") }) },
         bottomBar = {
@@ -542,13 +601,13 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
 
 
 @Composable
-fun ProfileScreen(username: String, onLogout: () -> Unit) {
+fun ProfileScreen(user: User, onLogout: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Hola, $username!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Hola, ${user.name}!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = { /* TODO */ }) { Text("Historial de compras") }
         Spacer(modifier = Modifier.height(16.dp))
@@ -561,3 +620,4 @@ fun ProfileScreen(username: String, onLogout: () -> Unit) {
 }
 
 data class BottomNavItem(val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val route: String)
+
