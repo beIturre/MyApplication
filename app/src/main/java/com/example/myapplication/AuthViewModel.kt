@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -68,6 +69,15 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
         repository.logoutUser()
         _authState.value = AuthState.LoggedOut
         _purchaseHistory.value = emptyList()
+    }
+
+    fun updateUserProfileImage(uri: Uri?) {
+        val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
+        repository.updateUserProfileImage(currentUser.email, uri?.toString())
+        // Refresh user state to show the new image immediately
+        repository.getLoggedInUser()?.let { updatedUser ->
+            _authState.value = AuthState.LoggedIn(updatedUser)
+        }
     }
 
     // --- Lógica de Contraseña ---

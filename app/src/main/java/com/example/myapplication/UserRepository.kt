@@ -5,7 +5,12 @@ import android.content.SharedPreferences
 import org.json.JSONObject
 
 // --- Clases de Datos ---
-data class User(val name: String, val email: String, val password:  String)
+data class User(
+    val name: String,
+    val email: String,
+    val password:  String,
+    val profileImageUri: String? = null // Add profile image URI
+)
 data class Purchase(
     val userEmail: String,
     val movieTitle: String,
@@ -23,6 +28,11 @@ class UserRepository(context: Context) {
         private const val KEY_USERS = "users"
         private const val KEY_LOGGED_IN_USER_EMAIL = "logged_in_user_email"
         private const val KEY_PURCHASES = "purchases"
+        // Add keys for new user fields
+        private const val KEY_USER_NAME = "name"
+        private const val KEY_USER_EMAIL = "email"
+        private const val KEY_USER_PASSWORD = "password"
+        private const val KEY_USER_PROFILE_IMAGE_URI = "profileImageUri"
     }
 
     // --- Lógica de Usuario ---
@@ -39,7 +49,7 @@ class UserRepository(context: Context) {
     fun findUser(email: String, password:  String): User? {
         return getUsers().find { it.email == email && it.password == password }
     }
-    
+
     fun loginUser(email: String) {
         prefs.edit().putString(KEY_LOGGED_IN_USER_EMAIL, email).apply()
     }
@@ -66,15 +76,28 @@ class UserRepository(context: Context) {
         return false // Usuario no encontrado
     }
 
+    fun updateUserProfileImage(email: String, imageUri: String?) {
+        val users = getUsers().toMutableSet()
+        val userToUpdate = users.find { it.email == email }
+        if (userToUpdate != null) {
+            val updatedUser = userToUpdate.copy(profileImageUri = imageUri)
+            users.remove(userToUpdate)
+            users.add(updatedUser)
+            saveUsers(users)
+        }
+    }
+
+
     private fun getUsers(): Set<User> {
         val userStrings = prefs.getStringSet(KEY_USERS, emptySet()) ?: emptySet()
         return userStrings.mapNotNull { userJson ->
             try {
                 val json = JSONObject(userJson)
                 User(
-                    name = json.getString("name"),
-                    email = json.getString("email"),
-                    password = json.getString("password")
+                    name = json.getString(KEY_USER_NAME),
+                    email = json.getString(KEY_USER_EMAIL),
+                    password = json.getString(KEY_USER_PASSWORD),
+                    profileImageUri = json.optString(KEY_USER_PROFILE_IMAGE_URI, null)
                 )
             } catch (e: Exception) { null }
         }.toSet()
@@ -83,9 +106,10 @@ class UserRepository(context: Context) {
     private fun saveUsers(users: Set<User>) {
         val userStrings = users.map { user ->
             JSONObject().apply {
-                put("name", user.name)
-                put("email", user.email)
-                put("password", user.password)
+                put(KEY_USER_NAME, user.name)
+                put(KEY_USER_EMAIL, user.email)
+                put(KEY_USER_PASSWORD, user.password)
+                put(KEY_USER_PROFILE_IMAGE_URI, user.profileImageUri)
             }.toString()
         }.toSet()
         prefs.edit().putStringSet(KEY_USERS, userStrings).apply()

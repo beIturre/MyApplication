@@ -1,5 +1,8 @@
 package com.example.myapplication
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,22 +17,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -249,6 +260,7 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
         composable("profile") { 
             ProfileScreen(
                 user = user, 
+                authViewModel = authViewModel,
                 onLogout = { authViewModel.logout() },
                 onNavigateToHistory = { navController.navigate("purchase_history") },
                 onNavigateToChangePassword = { navController.navigate("change_password") }
@@ -624,21 +636,130 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
 
 
 @Composable
-fun ProfileScreen(user: User, onLogout: () -> Unit, onNavigateToHistory: () -> Unit, onNavigateToChangePassword: () -> Unit) {
+fun ProfileScreen(
+    user: User,
+    authViewModel: AuthViewModel,
+    onLogout: () -> Unit,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToChangePassword: () -> Unit
+) {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+        onResult = { uri: Uri? ->
+            authViewModel.updateUserProfileImage(uri)
+        }
+    )
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Hola, ${user.name}!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onNavigateToHistory) { Text("Historial de compras") }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onNavigateToChangePassword) { Text("Cambiar contraseña") }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { /* TODO */ }) { Text("Boletas") }
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onLogout) { Text("Cerrar sesión") }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { launcher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val imageUri = user.profileImageUri?.let { Uri.parse(it) }
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Default Profile Icon",
+                            modifier = Modifier.size(70.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = user.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = user.email,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+            }
+
+            Divider()
+
+            Column {
+                ProfileMenuItem(
+                    text = "Historial de compras",
+                    icon = Icons.Default.History,
+                    onClick = onNavigateToHistory
+                )
+                Divider()
+                ProfileMenuItem(
+                    text = "Cambiar contraseña",
+                    icon = Icons.Default.Lock,
+                    onClick = onNavigateToChangePassword
+                )
+                Divider()
+                ProfileMenuItem(
+                    text = "Boletas",
+                    icon = Icons.Default.Receipt,
+                    onClick = { /* TODO */ }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Cerrar sesión")
+        }
+    }
+}
+
+@Composable
+fun ProfileMenuItem(text: String, icon: ImageVector, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color.Gray
+        )
     }
 }
 
@@ -745,5 +866,4 @@ fun Long.toFormattedDateString(): String {
     return sdf.format(Date(this))
 }
 
-data class BottomNavItem(val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val route: String)
-
+data class BottomNavItem(val title: String, val icon: ImageVector, val route: String)
