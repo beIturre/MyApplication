@@ -95,29 +95,29 @@ import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
 
-// --- Clases de Datos (sin cambios) ---
+// --- Clases de Datos ---
 data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String)
 data class ConcessionItem(val name: String, val price: Double, val imageUrl: String)
 data class Seat(val id: String, val row: Char, val number: Int, var status: SeatStatus)
 enum class SeatStatus { AVAILABLE, SELECTED, OCCUPIED }
 
-// --- Datos de Ejemplo (sin cambios) ---
+// --- Listas de productos y peliculas ---
 val sampleMovies = listOf(
-    Movie(1, "Mundos Paralelos", "Dr. A. Einstein", "Ciencia Ficción", "Un viaje a través de dimensiones...", "25 Dic 2024", listOf("15:00", "17:30", "20:00"), "https://picsum.photos/seed/mundos/400/600"),
-    Movie(2, "El Último Código", "Sra. L. Lovelace", "Thriller", "Una programadora descubre un secreto...", "10 Ene 2025", listOf("16:15", "18:45", "21:15"), "https://picsum.photos/seed/codigo/400/600"),
-    Movie(3, "La Sombra del Tiempo", "Sr. C. Nolan", "Misterio", "Un detective debe resolver un caso...", "14 Feb 2025", listOf("14:00", "19:00", "22:00"), "https://picsum.photos/seed/sombra/400/600"),
-    Movie(4, "Aventura en la IA", "Sra. S. Johnson", "Aventura", "Un grupo de adolescentes queda atrapado...", "20 Mar 2025", listOf("15:30", "18:00"), "https://picsum.photos/seed/ia/400/600"),
-    Movie(5, "El Despertar Cuántico", "Dr. M. Planck", "Drama", "Un científico debe arriesgarlo todo...", "05 Abr 2025", listOf("17:00", "20:30"), "https://picsum.photos/seed/cuantico/400/600"),
-    Movie(6, "Planeta Olvidado", "Sr. G. Lucas", "Ciencia Ficción", "Exploradores espaciales encuentran un planeta...", "18 May 2025", listOf("16:00", "19:45", "22:30"), "https://picsum.photos/seed/planeta/400/600"),
-    Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2025", listOf("18:30"), "https://picsum.photos/seed/cero/400/600")
+    Movie(1, "Kimetsu No Yaiba: Tren Infinito", "Haruo Sotozaki", "Accion/anime", "Narra la misión de Tanjiro Kamado y sus compañeros del Cuerpo de Matademonios para investigar una serie de desapariciones misteriosas en un tren llamado Tren Infinito. En este viaje, se unen al Pilar de las Llamas, Kyojuro Rengoku, para enfrentar al demonio Enmu, una de las Lunas Inferiores que ha tendido una trampa mortal a bordo del tren.", "25 Ene 2026", listOf("15:00", "17:30", "20:00"), "https://www.selecta-vision.com/wp-content/uploads/2024/07/Los-guardianes-de-la-noche-70x100-1-scaled-1-1448x2048.jpg"),
+    Movie(2, "Kimetsu No Yaiba: Castillo Infinito", "Haruo Sotozaki", "Anime de acción, fantasía oscura", "Se centra en la batalla decisiva entre Tanjiro Kamado, los Pilares y la Compañía Cazademonios contra Muzan Kibutsuji y las Lunas Superiores dentro del Castillo Infinito, el escondite interdimensional de Muzan.", "10 Ene 2026", listOf("16:15", "18:45", "21:15"), "https://i0.wp.com/tomatazos.buscafs.com/2025/08/Demon-Slayer-Kimetsu-no-Yaiba-Castillo-infinito-Poster-1-1.jpg?fit=1500,2250&quality=75&strip=all"),
+    Movie(3, "Chainsaw Man - La película: Arco de Reze", "Tatsuya Yoshihara ", "acción, aventura, fantasía oscura y terror", "Chainsaw Man - La película: Arco de Reze sigue a Denji, quien se fusionó con el demonio motosierra Pochita para convertirse en Chainsaw Man tras ser traicionado por la yakuza. Una misteriosa chica llamada Reze entra en su vida, desencadenando una brutal guerra entre demonios, cazadores y enemigos ocultos, donde Denji enfrenta su batalla más mortífera impulsado por el amor en un mundo sin reglas.", "14 Feb 2026", listOf("14:00", "19:00", "22:00"), "https://m.media-amazon.com/images/M/MV5BMzk1ZmNmMmMtNTc5OS00ZTMzLWIzNTMtZDQwNDNjYTU0YzU2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"),
+    Movie(4, "Aventura en la IA", "Sra. S. Johnson", "Aventura", "Un grupo de adolescentes queda atrapado...", "20 Mar 2026", listOf("15:30", "18:00"), "https://picsum.photos/seed/ia/400/600"),
+    Movie(5, "El Despertar Cuántico", "Dr. M. Planck", "Drama", "Un científico debe arriesgarlo todo...", "05 Abr 2026", listOf("17:00", "20:30"), "https://picsum.photos/seed/cuantico/400/600"),
+    Movie(6, "Planeta Olvidado", "Sr. G. Lucas", "Ciencia Ficción", "Exploradores espaciales encuentran un planeta...", "18 May 2026", listOf("16:00", "19:45", "22:30"), "https://picsum.photos/seed/planeta/400/600"),
+    Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2026", listOf("18:30"), "https://picsum.photos/seed/cero/400/600")
 )
 val sampleConcessions = listOf(
-    ConcessionItem("Palomitas Grandes", 5.50, "https://picsum.photos/seed/popcorn/400/400"),
-    ConcessionItem("Refresco Mediano", 3.75, "https://picsum.photos/seed/soda/400/400"),
-    ConcessionItem("Nachos con Queso", 6.20, "https://picsum.photos/seed/nachos/400/400"),
-    ConcessionItem("Hot Dog", 4.50, "https://picsum.photos/seed/hotdog/400/400"),
-    ConcessionItem("Chocolates", 2.80, "https://picsum.photos/seed/chocolate/400/400"),
-    ConcessionItem("Agua Embotellada", 2.00, "https://picsum.photos/seed/water/400/400")
+    ConcessionItem("Palomitas Grandes", 5.50, "https://media.istockphoto.com/id/497857462/es/foto/palomitas-de-ma%C3%ADz-en-el-per%C3%ADodo.jpg?s=612x612&w=0&k=20&c=dFQRkQrgC7ZYpuHATOdotegQFXCEIASXelrb1UsCPnc="),
+    ConcessionItem("Refresco Mediano", 3.75, "https://tb-static.uber.com/prod/image-proc/processed_images/c064570420dce0c6c2991aeb7f967a54/0fb376d1da56c05644450062d25c5c84.jpeg"),
+    ConcessionItem("Nachos con Queso", 6.20, "https://www.divinacocina.es/wp-content/uploads/nachos-con-salsa-queso.jpg"),
+    ConcessionItem("Hot Dog", 4.50, "https://awrestaurants.com/_next/static/chunks/images/sites-default-files-styles-responsive_image_5x4-public-2024-11-HotDogHotDog_0.3840.jpg"),
+    ConcessionItem("Chocolates", 2.80, "https://us.britishessentials.com/cdn/shop/files/28688011_0_640x640_7a2c7a96-6709-459b-9bdd-87e268414c23_x700.jpg?v=1739461545"),
+    ConcessionItem("Agua Embotellada", 2.00, "https://img.mundopmmi.com/files/base/pmmi/mundo/image/2020/01/botella_cristal_100_100.5e31c8c214c05.png?auto=format%2Ccompress&fit=max&q=70&w=1200")
 )
 
 
