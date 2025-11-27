@@ -392,18 +392,37 @@ fun HomeScreen() {
 
 @Composable
 fun MoviesScreen(onMovieClick: (Int) -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(16.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp) // Añade espacio entre tarjetas
+    ) {
         items(sampleMovies) { movie ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clickable { onMovieClick(movie.id) }
+                    .clickable { onMovieClick(movie.id) },
+                elevation = CardDefaults.cardElevation(4.dp) // Añade una pequeña sombra
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(movie.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Director: ${movie.director}", fontSize = 16.sp)
-                    Text("Género: ${movie.genre}", fontSize = 14.sp, color = Color.Gray)
+                // Usamos un Row para poner imagen y texto lado a lado
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // 1. Imagen de la película
+                    AsyncImage(
+                        model = movie.imageUrl,
+                        contentDescription = "Póster de ${movie.title}",
+                        modifier = Modifier
+                            .size(width = 80.dp, height = 120.dp) // Tamaño fijo para la imagen
+                            .clip(RoundedCornerShape(8.dp)), // Bordes redondeados
+                        contentScale = ContentScale.Crop // Escala la imagen para que llene el espacio
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp)) // Espacio entre imagen y texto
+
+                    // 2. Columna con la información de la película
+                    Column {
+                        Text(movie.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Director: ${movie.director}", fontSize = 16.sp)
+                        Text("Género: ${movie.genre}", fontSize = 14.sp, color = Color.Gray)
+                    }
                 }
             }
         }
