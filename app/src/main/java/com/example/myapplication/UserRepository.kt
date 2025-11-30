@@ -2,16 +2,20 @@ package com.example.myapplication
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.net.Uri
-import org.json.JSONObject
+import com.example.myapplication.database.AppDatabase
+import com.example.myapplication.database.PurchaseEntity
+import com.example.myapplication.database.UserEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-// --- Clases de Datos ---
+// --- Clases de Datos (mantenidas para compatibilidad) ---
 data class User(
     val name: String,
     val email: String,
-    val password:  String,
-    val profileImageUri: String? = null // Add profile image URI
+    val password: String,
+    val profileImageUri: String? = null
 )
+
 data class Purchase(
     val userEmail: String,
     val movieTitle: String,
@@ -22,33 +26,82 @@ data class Purchase(
 
 class UserRepository(private val context: Context) {
 
+    // Base de datos Room
+    private val database = AppDatabase.getDatabase(context)
+    private val userDao = database.userDao()
+    private val purchaseDao = database.purchaseDao()
+
+    // SharedPreferences solo para el email del usuario logueado (sesión)
     private val prefs: SharedPreferences =
         context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
     companion object {
-        private const val KEY_USERS = "users"
         private const val KEY_LOGGED_IN_USER_EMAIL = "logged_in_user_email"
-        private const val KEY_PURCHASES = "purchases"
-        // Add keys for new user fields
-        private const val KEY_USER_NAME = "name"
-        private const val KEY_USER_EMAIL = "email"
-        private const val KEY_USER_PASSWORD = "password"
-        private const val KEY_USER_PROFILE_IMAGE_URI = "profileImageUri"
+    }
+
+    // --- Funciones de conversión entre entidades y modelos de dominio ---
+    private fun UserEntity.toUser(): User {
+        return User(
+            name = this.name,
+            email = this.email,
+            password = this.password,
+            profileImageUri = this.profileImageUri
+        )
+    }
+
+    private fun User.toUserEntity(): UserEntity {
+        return UserEntity(
+            email = this.email,
+            name = this.name,
+            password = this.password,
+            profileImageUri = this.profileImageUri
+        )
+    }
+
+    private fun PurchaseEntity.toPurchase(): Purchase {
+        return Purchase(
+            userEmail = this.userEmail,
+            movieTitle = this.movieTitle,
+            time = this.time,
+            seatIds = this.seatIds,
+            purchaseTimestamp = this.purchaseTimestamp
+        )
+    }
+
+    private fun Purchase.toPurchaseEntity(): PurchaseEntity {
+        return PurchaseEntity(
+            userEmail = this.userEmail,
+            movieTitle = this.movieTitle,
+            time = this.time,
+            seatIds = this.seatIds,
+            purchaseTimestamp = this.purchaseTimestamp
+        )
     }
 
     // --- Lógica de Usuario ---
-    fun addUser(user: User): Boolean {
-        val users = getUsers().toMutableSet()
-        if (users.any { it.email == user.email }) {
-            return false
+    suspend fun addUser(user: User): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // Verificar si el usuario ya existe
+            val existingUser = userDao.getUserByEmail(user.email)
+            if (existingUser != null) {
+                return@withContext false
+            }
+            
+            // Insertar nuevo usuario
+            val result = userDao.insertUser(user.toUserEntity())
+            // insertUser retorna -1 si hay conflicto, > 0 si es exitoso
+            result > 0
+        } catch (e: Exception) {
+            false
         }
-        users.add(user)
-        saveUsers(users)
-        return true
     }
 
-    fun findUser(email: String, password:  String): User? {
-        return getUsers().find { it.email == email && it.password == password }
+    suspend fun findUser(email: String, password: String): User? = withContext(Dispatchers.IO) {
+        try {
+            userDao.findUser(email, password)?.toUser()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun loginUser(email: String) {
@@ -59,100 +112,46 @@ class UserRepository(private val context: Context) {
         prefs.edit().remove(KEY_LOGGED_IN_USER_EMAIL).apply()
     }
 
-    fun getLoggedInUser(): User? {
-        val email = prefs.getString(KEY_LOGGED_IN_USER_EMAIL, null) ?: return null
-        return getUsers().find { it.email == email }
-    }
-
-    fun changePassword(email: String, newPassword: String): Boolean {
-        val users = getUsers().toMutableSet()
-        val userToUpdate = users.find { it.email == email }
-        if (userToUpdate != null) {
-            val updatedUser = userToUpdate.copy(password = newPassword)
-            users.remove(userToUpdate)
-            users.add(updatedUser)
-            saveUsers(users)
-            return true
-        }
-        return false // Usuario no encontrado
-    }
-
-    fun updateUserProfileImage(email: String, imageUri: String?) {
-        val users = getUsers().toMutableSet()
-        val userToUpdate = users.find { it.email == email }
-        if (userToUpdate != null) {
-            val updatedUser = userToUpdate.copy(profileImageUri = imageUri)
-            users.remove(userToUpdate)
-            users.add(updatedUser)
-            saveUsers(users)
+    suspend fun getLoggedInUser(): User? = withContext(Dispatchers.IO) {
+        try {
+            val email = prefs.getString(KEY_LOGGED_IN_USER_EMAIL, null) ?: return@withContext null
+            userDao.getUserByEmail(email)?.toUser()
+        } catch (e: Exception) {
+            null
         }
     }
 
-
-    private fun getUsers(): Set<User> {
-        val userStrings = prefs.getStringSet(KEY_USERS, emptySet()) ?: emptySet()
-        return userStrings.mapNotNull { userJson ->
-            try {
-                val json = JSONObject(userJson)
-                User(
-                    name = json.getString(KEY_USER_NAME),
-                    email = json.getString(KEY_USER_EMAIL),
-                    password = json.getString(KEY_USER_PASSWORD),
-                    profileImageUri = json.optString(KEY_USER_PROFILE_IMAGE_URI, null)
-                )
-            } catch (e: Exception) { null }
-        }.toSet()
+    suspend fun changePassword(email: String, newPassword: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val rowsAffected = userDao.updatePassword(email, newPassword)
+            rowsAffected > 0
+        } catch (e: Exception) {
+            false
+        }
     }
 
-    private fun saveUsers(users: Set<User>) {
-        val userStrings = users.map { user ->
-            JSONObject().apply {
-                put(KEY_USER_NAME, user.name)
-                put(KEY_USER_EMAIL, user.email)
-                put(KEY_USER_PASSWORD, user.password)
-                put(KEY_USER_PROFILE_IMAGE_URI, user.profileImageUri)
-            }.toString()
-        }.toSet()
-        prefs.edit().putStringSet(KEY_USERS, userStrings).apply()
+    suspend fun updateUserProfileImage(email: String, imageUri: String?) = withContext(Dispatchers.IO) {
+        try {
+            userDao.updateProfileImage(email, imageUri)
+        } catch (e: Exception) {
+            // Error silencioso
+        }
     }
 
     // --- Lógica de Compras ---
-    fun savePurchase(purchase: Purchase) {
-        val allPurchases = getAllPurchases().toMutableList()
-        allPurchases.add(purchase)
-        val purchaseStrings = allPurchases.map { 
-            JSONObject().apply {
-                put("userEmail", it.userEmail)
-                put("movieTitle", it.movieTitle)
-                put("time", it.time)
-                put("seatIds", it.seatIds)
-                put("purchaseTimestamp", it.purchaseTimestamp)
-            }.toString()
-        }.toSet()
-        prefs.edit().putStringSet(KEY_PURCHASES, purchaseStrings).apply()
+    suspend fun savePurchase(purchase: Purchase) = withContext(Dispatchers.IO) {
+        try {
+            purchaseDao.insertPurchase(purchase.toPurchaseEntity())
+        } catch (e: Exception) {
+            // Error silencioso
+        }
     }
 
-    fun getPurchaseHistory(userEmail: String): List<Purchase> {
-        return getAllPurchases()
-            .filter { it.userEmail == userEmail }
-            .sortedByDescending { it.purchaseTimestamp }
-    }
-
-    private fun getAllPurchases(): List<Purchase> {
-        val purchaseStrings = prefs.getStringSet(KEY_PURCHASES, emptySet()) ?: emptySet()
-        return purchaseStrings.mapNotNull { purchaseJson ->
-            try {
-                val json = JSONObject(purchaseJson)
-                Purchase(
-                    userEmail = json.getString("userEmail"),
-                    movieTitle = json.getString("movieTitle"),
-                    time = json.getString("time"),
-                    seatIds = json.getString("seatIds"),
-                    purchaseTimestamp = json.getLong("purchaseTimestamp")
-                )
-            } catch (e: Exception) {
-                null
-            }
+    suspend fun getPurchaseHistory(userEmail: String): List<Purchase> = withContext(Dispatchers.IO) {
+        try {
+            purchaseDao.getPurchasesByUser(userEmail).map { it.toPurchase() }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 }

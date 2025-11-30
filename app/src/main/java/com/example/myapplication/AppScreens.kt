@@ -53,6 +53,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -173,6 +174,7 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
     val email by authViewModel.email
     val password by authViewModel.password
     val statusMessage by authViewModel.statusMessage
+    val isLoading by authViewModel.isLoading
 
     Column(
         modifier = Modifier
@@ -184,19 +186,58 @@ fun RegisterScreen(navController: NavController, authViewModel: AuthViewModel) {
         Text("Crear Cuenta", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
         statusMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(
+                it, 
+                color = if (it.contains("Error") || it.contains("no es válido") || it.contains("ya está en uso")) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    Color(0xFF4CAF50) // Verde para mensajes de éxito
+                }
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
-        OutlinedTextField(value = name, onValueChange = { authViewModel.name.value = it }, label = { Text("Nombre") })
+        OutlinedTextField(
+            value = name, 
+            onValueChange = { authViewModel.name.value = it }, 
+            label = { Text("Nombre") },
+            enabled = !isLoading
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = email, onValueChange = { authViewModel.email.value = it }, label = { Text("Email") })
+        OutlinedTextField(
+            value = email, 
+            onValueChange = { authViewModel.email.value = it }, 
+            label = { Text("Email") },
+            enabled = !isLoading
+        )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = password, onValueChange = { authViewModel.password.value = it }, label = { Text("Contraseña") }, visualTransformation = PasswordVisualTransformation())
+        OutlinedTextField(
+            value = password, 
+            onValueChange = { authViewModel.password.value = it }, 
+            label = { Text("Contraseña") }, 
+            visualTransformation = PasswordVisualTransformation(),
+            enabled = !isLoading
+        )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { authViewModel.register() }) {
-            Text("Registrarse")
+        Button(
+            onClick = { authViewModel.register() },
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Validando email...")
+            } else {
+                Text("Registrarse")
+            }
         }
-        TextButton(onClick = { navController.popBackStack() }) {
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = { navController.popBackStack() },
+            enabled = !isLoading
+        ) {
             Text("¿Ya tienes una cuenta? Inicia Sesión")
         }
     }

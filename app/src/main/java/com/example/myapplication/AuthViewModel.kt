@@ -6,6 +6,8 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 class AuthViewModel(private val repository: UserRepository) : ViewModel() {
 
@@ -28,24 +30,34 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
     
     // Mensajes de estado (error o éxito)
     val statusMessage = mutableStateOf<String?>(null)
+    
+    // Estado de carga para validación de email
+    val isLoading = mutableStateOf(false)
+    
+    // Servicio de validación de email
+    private val emailValidationService = EmailValidationService()
 
     init {
-        repository.getLoggedInUser()?.let { user ->
-            _authState.value = AuthState.LoggedIn(user)
-            loadPurchaseHistory()
+        viewModelScope.launch {
+            repository.getLoggedInUser()?.let { user ->
+                _authState.value = AuthState.LoggedIn(user)
+                loadPurchaseHistory()
+            }
         }
     }
 
     // --- Lógica de Autenticación ---
     fun login() {
-        val user = repository.findUser(loginEmail.value, loginPassword.value)
-        if (user != null) {
-            repository.loginUser(user.email)
-            _authState.value = AuthState.LoggedIn(user)
-            loadPurchaseHistory()
-            resetFields()
-        } else {
-            statusMessage.value = "Email o contraseña incorrectos"
+        viewModelScope.launch {
+            val user = repository.findUser(loginEmail.value, loginPassword.value)
+            if (user != null) {
+                repository.loginUser(user.email)
+                _authState.value = AuthState.LoggedIn(user)
+                loadPurchaseHistory()
+                resetFields()
+            } else {
+                statusMessage.value = "Email o contraseña incorrectos"
+            }
         }
     }
 
@@ -54,14 +66,44 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
             statusMessage.value = "Todos los campos son obligatorios"
             return
         }
-        val newUser = User(name.value, email.value, password.value)
-        if (repository.addUser(newUser)) {
-            repository.loginUser(newUser.email)
-            _authState.value = AuthState.LoggedIn(newUser)
-            loadPurchaseHistory()
-            resetFields()
-        } else {
-            statusMessage.value = "El email ya está en uso"
+        
+        // Validar email antes de registrar
+        isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val validationResult = emailValidationService.validateEmail(email.value)
+                
+                when (validationResult) {
+                    EmailValidationResult.INVALID -> {
+                        statusMessage.value = "El email ingresado no es válido. Por favor, verifica el formato."
+                        isLoading.value = false
+                        return@launch
+                    }
+                    EmailValidationResult.UNKNOWN -> {
+                        // Si el resultado es desconocido, permitir el registro pero mostrar advertencia
+                        statusMessage.value = "No se pudo verificar el email completamente. Continuando con el registro..."
+                    }
+                    EmailValidationResult.VALID -> {
+                        // Email válido, continuar con el registro
+                    }
+                }
+                
+                // Proceder con el registro
+                val newUser = User(name.value, email.value, password.value)
+                if (repository.addUser(newUser)) {
+                    repository.loginUser(newUser.email)
+                    _authState.value = AuthState.LoggedIn(newUser)
+                    loadPurchaseHistory()
+                    resetFields()
+                    statusMessage.value = null
+                } else {
+                    statusMessage.value = "El email ya está en uso"
+                }
+            } catch (e: Exception) {
+                statusMessage.value = "Error al validar el email: ${e.message}"
+            } finally {
+                isLoading.value = false
+            }
         }
     }
 
@@ -73,10 +115,12 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
 
     fun updateUserProfileImage(uri: Uri?) {
         val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
-        repository.updateUserProfileImage(currentUser.email, uri?.toString())
-        // Refresh user state to show the new image immediately
-        repository.getLoggedInUser()?.let { updatedUser ->
-            _authState.value = AuthState.LoggedIn(updatedUser)
+        viewModelScope.launch {
+            repository.updateUserProfileImage(currentUser.email, uri?.toString())
+            // Refresh user state to show the new image immediately
+            repository.getLoggedInUser()?.let { updatedUser ->
+                _authState.value = AuthState.LoggedIn(updatedUser)
+            }
         }
     }
 
@@ -93,35 +137,41 @@ class AuthViewModel(private val repository: UserRepository) : ViewModel() {
             return
         }
 
-        val success = repository.changePassword(currentUser.email, newPassword.value)
-        if (success) {
-            statusMessage.value = "Contraseña actualizada con éxito"
-            // Opcional: cerrar sesión después de cambiar la contraseña
-            // logout()
-        } else {
-            statusMessage.value = "Error al actualizar la contraseña"
+        viewModelScope.launch {
+            val success = repository.changePassword(currentUser.email, newPassword.value)
+            if (success) {
+                statusMessage.value = "Contraseña actualizada con éxito"
+                // Opcional: cerrar sesión después de cambiar la contraseña
+                // logout()
+            } else {
+                statusMessage.value = "Error al actualizar la contraseña"
+            }
+            newPassword.value = ""
+            confirmPassword.value = ""
         }
-        newPassword.value = ""
-        confirmPassword.value = ""
     }
 
     // --- Lógica de Compras ---
     fun addPurchase(movieTitle: String, time: String, seatIds: String) {
         val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
-        val newPurchase = Purchase(
-            userEmail = currentUser.email,
-            movieTitle = movieTitle,
-            time = time,
-            seatIds = seatIds,
-            purchaseTimestamp = System.currentTimeMillis()
-        )
-        repository.savePurchase(newPurchase)
-        loadPurchaseHistory()
+        viewModelScope.launch {
+            val newPurchase = Purchase(
+                userEmail = currentUser.email,
+                movieTitle = movieTitle,
+                time = time,
+                seatIds = seatIds,
+                purchaseTimestamp = System.currentTimeMillis()
+            )
+            repository.savePurchase(newPurchase)
+            loadPurchaseHistory()
+        }
     }
 
     private fun loadPurchaseHistory() {
         val currentUser = (_authState.value as? AuthState.LoggedIn)?.user ?: return
-        _purchaseHistory.value = repository.getPurchaseHistory(currentUser.email)
+        viewModelScope.launch {
+            _purchaseHistory.value = repository.getPurchaseHistory(currentUser.email)
+        }
     }
     
     // --- Utilidades ---
