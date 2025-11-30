@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -43,7 +44,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,20 +98,20 @@ import java.util.Locale
 import kotlin.random.Random
 
 // --- Clases de Datos ---
-data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String)
+data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String, val price: Long) // Precio en pesos chilenos
 data class ConcessionItem(val name: String, val price: Double, val imageUrl: String)
 data class Seat(val id: String, val row: Char, val number: Int, var status: SeatStatus)
 enum class SeatStatus { AVAILABLE, SELECTED, OCCUPIED }
 
 // --- Listas de productos y peliculas ---
 val sampleMovies = listOf(
-    Movie(1, "Kimetsu No Yaiba: Tren Infinito", "Haruo Sotozaki", "Accion/anime", "Narra la misión de Tanjiro Kamado y sus compañeros del Cuerpo de Matademonios para investigar una serie de desapariciones misteriosas en un tren llamado Tren Infinito. En este viaje, se unen al Pilar de las Llamas, Kyojuro Rengoku, para enfrentar al demonio Enmu, una de las Lunas Inferiores que ha tendido una trampa mortal a bordo del tren.", "25 Ene 2026", listOf("15:00", "17:30", "20:00"), "https://www.selecta-vision.com/wp-content/uploads/2024/07/Los-guardianes-de-la-noche-70x100-1-scaled-1-1448x2048.jpg"),
-    Movie(2, "Kimetsu No Yaiba: Castillo Infinito", "Haruo Sotozaki", "Anime de acción, fantasía oscura", "Se centra en la batalla decisiva entre Tanjiro Kamado, los Pilares y la Compañía Cazademonios contra Muzan Kibutsuji y las Lunas Superiores dentro del Castillo Infinito, el escondite interdimensional de Muzan.", "10 Ene 2026", listOf("16:15", "18:45", "21:15"), "https://i0.wp.com/tomatazos.buscafs.com/2025/08/Demon-Slayer-Kimetsu-no-Yaiba-Castillo-infinito-Poster-1-1.jpg?fit=1500,2250&quality=75&strip=all"),
-    Movie(3, "Chainsaw Man - La película: Arco de Reze", "Tatsuya Yoshihara ", "acción, aventura, fantasía oscura y terror", "Chainsaw Man - La película: Arco de Reze sigue a Denji, quien se fusionó con el demonio motosierra Pochita para convertirse en Chainsaw Man tras ser traicionado por la yakuza. Una misteriosa chica llamada Reze entra en su vida, desencadenando una brutal guerra entre demonios, cazadores y enemigos ocultos, donde Denji enfrenta su batalla más mortífera impulsado por el amor en un mundo sin reglas.", "14 Feb 2026", listOf("14:00", "19:00", "22:00"), "https://m.media-amazon.com/images/M/MV5BMzk1ZmNmMmMtNTc5OS00ZTMzLWIzNTMtZDQwNDNjYTU0YzU2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"),
-    Movie(4, "Aventura en la IA", "Sra. S. Johnson", "Aventura", "Un grupo de adolescentes queda atrapado...", "20 Mar 2026", listOf("15:30", "18:00"), "https://picsum.photos/seed/ia/400/600"),
-    Movie(5, "El Despertar Cuántico", "Dr. M. Planck", "Drama", "Un científico debe arriesgarlo todo...", "05 Abr 2026", listOf("17:00", "20:30"), "https://picsum.photos/seed/cuantico/400/600"),
-    Movie(6, "Planeta Olvidado", "Sr. G. Lucas", "Ciencia Ficción", "Exploradores espaciales encuentran un planeta...", "18 May 2026", listOf("16:00", "19:45", "22:30"), "https://picsum.photos/seed/planeta/400/600"),
-    Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2026", listOf("18:30"), "https://picsum.photos/seed/cero/400/600")
+    Movie(1, "Kimetsu No Yaiba: Tren Infinito", "Haruo Sotozaki", "Accion/anime", "Narra la misión de Tanjiro Kamado y sus compañeros del Cuerpo de Matademonios para investigar una serie de desapariciones misteriosas en un tren llamado Tren Infinito. En este viaje, se unen al Pilar de las Llamas, Kyojuro Rengoku, para enfrentar al demonio Enmu, una de las Lunas Inferiores que ha tendido una trampa mortal a bordo del tren.", "25 Ene 2026", listOf("15:00", "17:30", "20:00"), "https://www.selecta-vision.com/wp-content/uploads/2024/07/Los-guardianes-de-la-noche-70x100-1-scaled-1-1448x2048.jpg", 5500L),
+    Movie(2, "Kimetsu No Yaiba: Castillo Infinito", "Haruo Sotozaki", "Anime de acción, fantasía oscura", "Se centra en la batalla decisiva entre Tanjiro Kamado, los Pilares y la Compañía Cazademonios contra Muzan Kibutsuji y las Lunas Superiores dentro del Castillo Infinito, el escondite interdimensional de Muzan.", "10 Ene 2026", listOf("16:15", "18:45", "21:15"), "https://i0.wp.com/tomatazos.buscafs.com/2025/08/Demon-Slayer-Kimetsu-no-Yaiba-Castillo-infinito-Poster-1-1.jpg?fit=1500,2250&quality=75&strip=all", 6000L),
+    Movie(3, "Chainsaw Man - La película: Arco de Reze", "Tatsuya Yoshihara ", "acción, aventura, fantasía oscura y terror", "Chainsaw Man - La película: Arco de Reze sigue a Denji, quien se fusionó con el demonio motosierra Pochita para convertirse en Chainsaw Man tras ser traicionado por la yakuza. Una misteriosa chica llamada Reze entra en su vida, desencadenando una brutal guerra entre demonios, cazadores y enemigos ocultos, donde Denji enfrenta su batalla más mortífera impulsado por el amor en un mundo sin reglas.", "14 Feb 2026", listOf("14:00", "19:00", "22:00"), "https://m.media-amazon.com/images/M/MV5BMzk1ZmNmMmMtNTc5OS00ZTMzLWIzNTMtZDQwNDNjYTU0YzU2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", 5800L),
+    Movie(4, "Aventura en la IA", "Sra. S. Johnson", "Aventura", "Un grupo de adolescentes queda atrapado...", "20 Mar 2026", listOf("15:30", "18:00"), "https://picsum.photos/seed/ia/400/600", 4500L),
+    Movie(5, "El Despertar Cuántico", "Dr. M. Planck", "Drama", "Un científico debe arriesgarlo todo...", "05 Abr 2026", listOf("17:00", "20:30"), "https://picsum.photos/seed/cuantico/400/600", 5000L),
+    Movie(6, "Planeta Olvidado", "Sr. G. Lucas", "Ciencia Ficción", "Exploradores espaciales encuentran un planeta...", "18 May 2026", listOf("16:00", "19:45", "22:30"), "https://picsum.photos/seed/planeta/400/600", 5200L),
+    Movie(7, "Código Cero", "Sr. A. Turing", "Documental", "La historia no contada de los héroes...", "30 Jun 2026", listOf("18:30"), "https://picsum.photos/seed/cero/400/600", 4000L)
 )
 val sampleConcessions = listOf(
     ConcessionItem("Palomitas Grandes", 5.50, "https://media.istockphoto.com/id/497857462/es/foto/palomitas-de-ma%C3%ADz-en-el-per%C3%ADodo.jpg?s=612x612&w=0&k=20&c=dFQRkQrgC7ZYpuHATOdotegQFXCEIASXelrb1UsCPnc="),
@@ -364,8 +365,8 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             val time = backStackEntry.arguments?.getString("time") ?: ""
             sampleMovies.find { it.id == movieId }?.let { movie ->
                 SeatSelectionScreen(
-                    movie = movie,
-                    time = time,
+                    _movie = movie,
+                    _time = time,
                     onNavigateBack = { navController.popBackStack() },
                     onConfirm = { selectedSeats ->
                         val seatIds = selectedSeats.joinToString(",") { it.id }
@@ -463,6 +464,13 @@ fun MoviesScreen(onMovieClick: (Int) -> Unit) {
                         Text(movie.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text("Director: ${movie.director}", fontSize = 16.sp)
                         Text("Género: ${movie.genre}", fontSize = 14.sp, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            PriceFormatter.formatPrice(movie.price),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -582,6 +590,15 @@ fun MovieDetailScreen(movie: Movie, onNavigateBack: () -> Unit, onContinue: (Str
                 Text(movie.releaseDate, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(16.dp))
 
+                Text("Precio", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    PriceFormatter.formatPrice(movie.price),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Text("Horas de Función Disponibles", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     movie.availableTimes.forEach { time ->
@@ -611,7 +628,12 @@ fun SeatLegendItem(color: Color, text: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, onConfirm: (List<Seat>) -> Unit) {
+fun SeatSelectionScreen(
+    @Suppress("UNUSED_PARAMETER") _movie: Movie,
+    @Suppress("UNUSED_PARAMETER") _time: String,
+    onNavigateBack: () -> Unit,
+    onConfirm: (List<Seat>) -> Unit
+) {
     val seatRows = 'A'..'H'
     val seatNumbers = 1..8
     var seats by remember { mutableStateOf(
@@ -865,6 +887,13 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
                     Text("Hora: $time", style = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Asientos: $selectedSeatIds", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Precio: ${PriceFormatter.formatPrice(movie.price)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -888,9 +917,9 @@ fun ProfileScreen(
                 // Release persisted permissions for the old URI if it exists
                 user.profileImageUri?.let { oldUriString ->
                     try {
-                        val oldUri = Uri.parse(oldUriString)
+                        val oldUri = oldUriString.toUri()
                         context.contentResolver.releasePersistableUriPermission(oldUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Handle exceptions, e.g., the URI is invalid or permission was already revoked
                     }
                 }
@@ -927,7 +956,7 @@ fun ProfileScreen(
                         .clickable { launcher.launch(arrayOf("image/*")) },
                     contentAlignment = Alignment.Center
                 ) {
-                    val imageUri = user.profileImageUri?.let { Uri.parse(it) }
+                    val imageUri = user.profileImageUri?.toUri()
                     if (imageUri != null) {
                         AsyncImage(
                             model = imageUri,
@@ -959,7 +988,7 @@ fun ProfileScreen(
                 )
             }
 
-            Divider()
+            HorizontalDivider()
 
             Column {
                 ProfileMenuItem(
@@ -967,13 +996,13 @@ fun ProfileScreen(
                     icon = Icons.Default.History,
                     onClick = onNavigateToHistory
                 )
-                Divider()
+                HorizontalDivider()
                 ProfileMenuItem(
                     text = "Cambiar contraseña",
                     icon = Icons.Default.Lock,
                     onClick = onNavigateToChangePassword
                 )
-                Divider()
+                HorizontalDivider()
                 ProfileMenuItem(
                     text = "Boletas",
                     icon = Icons.Default.Receipt,
