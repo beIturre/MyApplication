@@ -81,7 +81,7 @@ Una aplicación desarrollada para la asignatura Desarrollo de Aplicaciones Movil
 - **O Emulador Android** configurado
 
 
-## ⚙️ Configuración
+##  Configuración
 
 ### Configurar API de Validación de Email
 
@@ -226,7 +226,7 @@ La aplicación requiere el siguiente permiso (ya configurado en `AndroidManifest
   - Asientos seleccionados
 - Ordenado por fecha (más reciente primero)
 
-## 🏗 Arquitectura
+##  Arquitectura
 
 ### Patrón MVVM
 
@@ -413,7 +413,7 @@ La base de datos se configura automáticamente al iniciar la aplicación. No req
 **Versión de la base de datos**: 1  
 **Nombre de la base de datos**: `cinemax_database`
 
-## 🔌 API de Validación de Email
+##  API de Validación de Email
 
 ### Servicio Integrado
 
@@ -433,7 +433,7 @@ Ver sección [Configuración](#-configuración) para detalles.
 
 
 
-## 🧪 Tests Unitarios
+##  Tests Unitarios
 
 El proyecto incluye una suite completa de tests unitarios para garantizar la calidad y confiabilidad del código.
 
@@ -549,7 +549,7 @@ app/src/test/java/com/example/myapplication/
 
 
 
-## 🤝 Contribución
+## Contribución
 
 Las contribuciones son bienvenidas. Por favor:
 
@@ -561,7 +561,7 @@ Las contribuciones son bienvenidas. Por favor:
 
 
 
-## 📝 Notas de Desarrollo
+## Notas de Desarrollo
 
 ### Datos de Prueba
 
