@@ -2,7 +2,7 @@ package com.example.myapplication
 
 import android.content.Context
 import android.content.SharedPreferences
-import io.mockk.*
+import io.mockk.*import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -21,7 +21,7 @@ class PurchaseRepositoryTest {
     @Before
     fun setUp() {
         mockkStatic(SharedPreferences::class)
-        
+
         mockContext = mockk<Context>(relaxed = true)
         mockSharedPreferences = mockk<SharedPreferences>(relaxed = true)
         mockEditor = mockk<SharedPreferences.Editor>(relaxed = true)
@@ -41,7 +41,7 @@ class PurchaseRepositoryTest {
     }
 
     @Test
-    fun `test guardar compra exitosamente`() {
+    fun `test guardar compra exitosamente`() = runTest {
         // Given - Una nueva compra
         val purchase = Purchase(
             userEmail = "usuario@example.com",
@@ -51,6 +51,7 @@ class PurchaseRepositoryTest {
             purchaseTimestamp = System.currentTimeMillis()
         )
 
+        // Simula que al principio no hay compras para este usuario
         every { mockSharedPreferences.getStringSet(any(), any()) } returns emptySet()
 
         // When - Guardar la compra
@@ -62,8 +63,8 @@ class PurchaseRepositoryTest {
     }
 
     @Test
-    fun `test obtener historial de compras ordenado por fecha`() {
-        // Given - Compras existentes con diferentes timestamps
+    // MODIFICADO: Añadir runTest para poder llamar a la función suspend getPurchaseHistory
+    fun `test obtener historial de compras ordenado por fecha`() = runTest {
         val purchase1 = Purchase(
             userEmail = "usuario@example.com",
             movieTitle = "Película 1",
@@ -71,7 +72,7 @@ class PurchaseRepositoryTest {
             seatIds = "A1",
             purchaseTimestamp = 1000L // Más antigua
         )
-        
+
         val purchase2 = Purchase(
             userEmail = "usuario@example.com",
             movieTitle = "Película 2",
@@ -79,7 +80,7 @@ class PurchaseRepositoryTest {
             seatIds = "B2",
             purchaseTimestamp = 3000L // Más reciente
         )
-        
+
         val purchase3 = Purchase(
             userEmail = "usuario@example.com",
             movieTitle = "Película 3",
@@ -92,20 +93,20 @@ class PurchaseRepositoryTest {
         val purchase1Json = """
             {"userEmail":"usuario@example.com","movieTitle":"Película 1","time":"15:00","seatIds":"A1","purchaseTimestamp":1000}
         """.trimIndent()
-        
+
         val purchase2Json = """
             {"userEmail":"usuario@example.com","movieTitle":"Película 2","time":"20:00","seatIds":"B2","purchaseTimestamp":3000}
         """.trimIndent()
-        
+
         val purchase3Json = """
             {"userEmail":"usuario@example.com","movieTitle":"Película 3","time":"18:00","seatIds":"C3","purchaseTimestamp":2000}
         """.trimIndent()
 
-        every { 
-            mockSharedPreferences.getStringSet(any(), any()) 
+        every {
+            mockSharedPreferences.getStringSet(any(), any())
         } returns setOf(purchase1Json, purchase2Json, purchase3Json)
 
-        // When - Obtener historial
+        // When - Obtener historial (ahora se llama dentro de runTest)
         val history = userRepository.getPurchaseHistory("usuario@example.com")
 
         // Then - Debe estar ordenado por fecha descendente (más reciente primero)
@@ -116,30 +117,30 @@ class PurchaseRepositoryTest {
     }
 
     @Test
-    fun `test obtener historial de compras filtra por email de usuario`() {
-        // Given - Compras de diferentes usuarios
+    // MODIFICADO: Añadir runTest para poder llamar a la función suspend getPurchaseHistory
+    fun `test obtener historial de compras filtra por email de usuario`() = runTest {
         val purchase1Json = """
             {"userEmail":"usuario1@example.com","movieTitle":"Película Usuario 1","time":"15:00","seatIds":"A1","purchaseTimestamp":1000}
         """.trimIndent()
-        
+
         val purchase2Json = """
             {"userEmail":"usuario2@example.com","movieTitle":"Película Usuario 2","time":"20:00","seatIds":"B2","purchaseTimestamp":2000}
         """.trimIndent()
-        
+
         val purchase3Json = """
             {"userEmail":"usuario1@example.com","movieTitle":"Otra Película Usuario 1","time":"18:00","seatIds":"C3","purchaseTimestamp":3000}
         """.trimIndent()
 
-        every { 
-            mockSharedPreferences.getStringSet(any(), any()) 
+        every {
+            mockSharedPreferences.getStringSet(any(), any())
         } returns setOf(purchase1Json, purchase2Json, purchase3Json)
 
-        // When - Obtener historial de usuario1
+        // When - Obtener historial de usuario1 (ahora se llama dentro de runTest)
         val history = userRepository.getPurchaseHistory("usuario1@example.com")
 
         // Then - Solo debe retornar compras de usuario1
         assertEquals("Debe haber 2 compras del usuario1", 2, history.size)
-        assertTrue("Todas las compras deben ser del usuario1", 
+        assertTrue("Todas las compras deben ser del usuario1",
             history.all { it.userEmail == "usuario1@example.com" })
         assertFalse("No debe incluir compras de otros usuarios",
             history.any { it.userEmail == "usuario2@example.com" })
