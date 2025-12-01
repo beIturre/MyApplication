@@ -24,9 +24,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -96,20 +98,20 @@ import java.util.Locale
 import kotlin.random.Random
 
 // --- Clases de Datos ---
-data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String)
+data class Movie(val id: Int, val title: String, val director: String, val genre: String, val synopsis: String, val releaseDate: String, val availableTimes: List<String>, val imageUrl: String,  val price: Double)
 data class ConcessionItem(val name: String, val price: Double, val imageUrl: String)
 data class Seat(val id: String, val row: Char, val number: Int, var status: SeatStatus)
 enum class SeatStatus { AVAILABLE, SELECTED, OCCUPIED }
 
 // --- Listas de productos y peliculas ---
 val sampleMovies = listOf(
-    Movie(1, "Kimetsu No Yaiba: Tren Infinito", "Haruo Sotozaki", "Accion/anime", "Narra la misión de Tanjiro Kamado y sus compañeros del Cuerpo de Matademonios para investigar una serie de desapariciones misteriosas en un tren llamado Tren Infinito. En este viaje, se unen al Pilar de las Llamas, Kyojuro Rengoku, para enfrentar al demonio Enmu, una de las Lunas Inferiores que ha tendido una trampa mortal a bordo del tren.", "25 Ene 2026", listOf("15:00", "17:30", "20:00"), "https://www.selecta-vision.com/wp-content/uploads/2024/07/Los-guardianes-de-la-noche-70x100-1-scaled-1-1448x2048.jpg"),
-    Movie(2, "Kimetsu No Yaiba: Castillo Infinito", "Haruo Sotozaki", "Anime de acción, fantasía oscura", "Se centra en la batalla decisiva entre Tanjiro Kamado, los Pilares y la Compañía Cazademonios contra Muzan Kibutsuji y las Lunas Superiores dentro del Castillo Infinito, el escondite interdimensional de Muzan.", "10 Ene 2026", listOf("16:15", "18:45", "21:15"), "https://i0.wp.com/tomatazos.buscafs.com/2025/08/Demon-Slayer-Kimetsu-no-Yaiba-Castillo-infinito-Poster-1-1.jpg?fit=1500,2250&quality=75&strip=all"),
-    Movie(3, "Chainsaw Man - La película: Arco de Reze", "Tatsuya Yoshihara ", "acción, aventura, fantasía oscura y terror", "Chainsaw Man - La película: Arco de Reze sigue a Denji, quien se fusionó con el demonio motosierra Pochita para convertirse en Chainsaw Man tras ser traicionado por la yakuza. Una misteriosa chica llamada Reze entra en su vida, desencadenando una brutal guerra entre demonios, cazadores y enemigos ocultos, donde Denji enfrenta su batalla más mortífera impulsado por el amor en un mundo sin reglas.", "14 Feb 2026", listOf("14:00", "19:00", "22:00"), "https://m.media-amazon.com/images/M/MV5BMzk1ZmNmMmMtNTc5OS00ZTMzLWIzNTMtZDQwNDNjYTU0YzU2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg"),
-    Movie(4, "Spider-Man", "Sam Raimi", "Pelicula de Superhéroes", "Mordido por una araña genéticamente modificada, un estudiante de secundaria tímido y torpe obtiene increíbles capacidades como arácnido. Pronto comprenderá que su cometido es utilizarlas para luchar contra el mal y defender a sus vecinos.", "20 Mar 2026", listOf("15:30", "18:00"), "https://t2.gstatic.com/licensed-image?q=tbn:ANd9GcQ5Iu3yQZ5ZO30RYvV7WCdtwdKP0RAvs6oVQXDSa_t6We3dJBEDtSxKpSknFQKWZucc6SK4SFU5NXbI_fk6"),
-    Movie(5, "Star Wars: Episodio IV – Una nueva esperanza(1977)", "George Lucas", "Ciencia Ficción", "La nave en la que viaja la princesa Leia es capturada por las tropas imperiales al mando del temible Darth Vader. Antes de ser atrapada, Leia consigue introducir un mensaje en su robot R2-D2, quien acompañado de su inseparable C-3PO logran escapar. Tras aterrizar en el planeta Tattooine son capturados y vendidos al joven Luke Skywalker, quien descubrirá el mensaje oculto que va destinado a Obi Wan Kenobi, maestro Jedi a quien Luke debe encontrar para salvar a la princesa.", "05 Abr 2026", listOf("17:00", "20:30"), "https://t3.gstatic.com/licensed-image?q=tbn:ANd9GcT4cGS_Mi5R2n_OY0piwp2FoNXWNcGs-BiANoT6gZ5-hKYGDtJ-Yu4u2vnEmhtnOPyB1-5t23olPcoo1oWP"),
-    Movie(6, "DUNE", "Denis Villeneuve", "Ciencia Ficción", "Paul Atreides, el joven heredero de la Casa Atreides, quien debe viajar con su familia al peligroso planeta desértico de Arrakis. Este planeta es la única fuente de la valiosa «especia melange», una sustancia vital para los viajes espaciales y con propiedades que aumentan la longevidad y las habilidades mentales. La trama se complica cuando la familia es traicionada, lo que obliga a Paul y a su madre a refugiarse entre los nativos de Arrakis, los Fremen, y comenzar una lucha por el futuro de su familia y su gente en medio de las intrigas políticas y el poder del Imperio.  ", "18 May 2026", listOf("16:00", "19:45", "22:30"), "https://cinefiloincurable.com/wp-content/uploads/2021/11/dune2021-01.jpg?w=691"),
-    Movie(7, "Venom", "Ruben Fleischer", "Acción", "El periodista Eddie Brock intenta desenmascarar al genio científico Carlton Drake, el célebre fundador de la Fundación Vida. Mientras investiga uno de los experimentos de Drake, Brock establece una simbiosis con un ente alienígena que le ofrece superpoderes, pero el ser se apodera de su personalidad y lo vuelve perverso.", "30 Jun 2026", listOf("18:30"), "https://t3.gstatic.com/licensed-image?q=tbn:ANd9GcR2TEseEg3Zxz3CwSJk9lP2WpEzjvHnUKwmiMTTyZC7FtpeM2Uo8ckKqkBx1tsWa3Vz1EupF_F4W4psU_NV")
+    Movie(1, "Kimetsu No Yaiba: Tren Infinito", "Haruo Sotozaki", "Accion/anime", "Narra la misión de Tanjiro Kamado y sus compañeros del Cuerpo de Matademonios para investigar una serie de desapariciones misteriosas en un tren llamado Tren Infinito. En este viaje, se unen al Pilar de las Llamas, Kyojuro Rengoku, para enfrentar al demonio Enmu, una de las Lunas Inferiores que ha tendido una trampa mortal a bordo del tren.", "25 Ene 2026", listOf("15:00", "17:30", "20:00"), "https://www.selecta-vision.com/wp-content/uploads/2024/07/Los-guardianes-de-la-noche-70x100-1-scaled-1-1448x2048.jpg", 6.00),
+    Movie(2, "Kimetsu No Yaiba: Castillo Infinito", "Haruo Sotozaki", "Anime de acción, fantasía oscura", "Se centra en la batalla decisiva entre Tanjiro Kamado, los Pilares y la Compañía Cazademonios contra Muzan Kibutsuji y las Lunas Superiores dentro del Castillo Infinito, el escondite interdimensional de Muzan.", "10 Ene 2026", listOf("16:15", "18:45", "21:15"), "https://i0.wp.com/tomatazos.buscafs.com/2025/08/Demon-Slayer-Kimetsu-no-Yaiba-Castillo-infinito-Poster-1-1.jpg?fit=1500,2250&quality=75&strip=all", 5.00),
+    Movie(3, "Chainsaw Man - La película: Arco de Reze", "Tatsuya Yoshihara ", "acción, aventura, fantasía oscura y terror", "Chainsaw Man - La película: Arco de Reze sigue a Denji, quien se fusionó con el demonio motosierra Pochita para convertirse en Chainsaw Man tras ser traicionado por la yakuza. Una misteriosa chica llamada Reze entra en su vida, desencadenando una brutal guerra entre demonios, cazadores y enemigos ocultos, donde Denji enfrenta su batalla más mortífera impulsado por el amor en un mundo sin reglas.", "14 Feb 2026", listOf("14:00", "19:00", "22:00"), "https://m.media-amazon.com/images/M/MV5BMzk1ZmNmMmMtNTc5OS00ZTMzLWIzNTMtZDQwNDNjYTU0YzU2XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", 6.00),
+    Movie(4, "Spider-Man", "Sam Raimi", "Pelicula de Superhéroes", "Mordido por una araña genéticamente modificada, un estudiante de secundaria tímido y torpe obtiene increíbles capacidades como arácnido. Pronto comprenderá que su cometido es utilizarlas para luchar contra el mal y defender a sus vecinos.", "20 Mar 2026", listOf("15:30", "18:00"), "https://t2.gstatic.com/licensed-image?q=tbn:ANd9GcQ5Iu3yQZ5ZO30RYvV7WCdtwdKP0RAvs6oVQXDSa_t6We3dJBEDtSxKpSknFQKWZucc6SK4SFU5NXbI_fk6", 8.00),
+    Movie(5, "Star Wars: Episodio IV – Una nueva esperanza(1977)", "George Lucas", "Ciencia Ficción", "La nave en la que viaja la princesa Leia es capturada por las tropas imperiales al mando del temible Darth Vader. Antes de ser atrapada, Leia consigue introducir un mensaje en su robot R2-D2, quien acompañado de su inseparable C-3PO logran escapar. Tras aterrizar en el planeta Tattooine son capturados y vendidos al joven Luke Skywalker, quien descubrirá el mensaje oculto que va destinado a Obi Wan Kenobi, maestro Jedi a quien Luke debe encontrar para salvar a la princesa.", "05 Abr 2026", listOf("17:00", "20:30"), "https://t3.gstatic.com/licensed-image?q=tbn:ANd9GcT4cGS_Mi5R2n_OY0piwp2FoNXWNcGs-BiANoT6gZ5-hKYGDtJ-Yu4u2vnEmhtnOPyB1-5t23olPcoo1oWP", 7.00),
+    Movie(6, "DUNE", "Denis Villeneuve", "Ciencia Ficción", "Paul Atreides, el joven heredero de la Casa Atreides, quien debe viajar con su familia al peligroso planeta desértico de Arrakis. Este planeta es la única fuente de la valiosa «especia melange», una sustancia vital para los viajes espaciales y con propiedades que aumentan la longevidad y las habilidades mentales. La trama se complica cuando la familia es traicionada, lo que obliga a Paul y a su madre a refugiarse entre los nativos de Arrakis, los Fremen, y comenzar una lucha por el futuro de su familia y su gente en medio de las intrigas políticas y el poder del Imperio.  ", "18 May 2026", listOf("16:00", "19:45", "22:30"), "https://cinefiloincurable.com/wp-content/uploads/2021/11/dune2021-01.jpg?w=691", 4.00),
+    Movie(7, "Venom", "Ruben Fleischer", "Acción", "El periodista Eddie Brock intenta desenmascarar al genio científico Carlton Drake, el célebre fundador de la Fundación Vida. Mientras investiga uno de los experimentos de Drake, Brock establece una simbiosis con un ente alienígena que le ofrece superpoderes, pero el ser se apodera de su personalidad y lo vuelve perverso.", "30 Jun 2026", listOf("18:30"), "https://t3.gstatic.com/licensed-image?q=tbn:ANd9GcR2TEseEg3Zxz3CwSJk9lP2WpEzjvHnUKwmiMTTyZC7FtpeM2Uo8ckKqkBx1tsWa3Vz1EupF_F4W4psU_NV", 10.00)
 )
 val sampleConcessions = listOf(
     ConcessionItem("Palomitas Grandes", 5.50, "https://media.istockphoto.com/id/497857462/es/foto/palomitas-de-ma%C3%ADz-en-el-per%C3%ADodo.jpg?s=612x612&w=0&k=20&c=dFQRkQrgC7ZYpuHATOdotegQFXCEIASXelrb1UsCPnc="),
@@ -346,9 +348,12 @@ fun MainContentNavigation(navController: NavHostController, padding: PaddingValu
             val time = backStackEntry.arguments?.getString("time") ?: ""
             val seatIds = backStackEntry.arguments?.getString("seatIds") ?: ""
             sampleMovies.find { it.id == movieId }?.let { movie ->
-                 PaymentScreen(
+                PaymentScreen(
+                    movie = movie,
+                    selectedSeatIds = seatIds,
                     onNavigateBack = { navController.popBackStack() },
                     onConfirmPayment = {
+
                         authViewModel.addPurchase(movie.title, time, seatIds)
                         navController.navigate("confirmation/${movie.id}/$time/$seatIds")
                     }
@@ -422,6 +427,14 @@ fun MoviesScreen(onMovieClick: (Int) -> Unit) {
                         Text(movie.title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text("Director: ${movie.director}", fontSize = 16.sp)
                         Text("Género: ${movie.genre}", fontSize = 14.sp, color = Color.Gray)
+                        // precio de la pelicula mostrado
+                        Text(
+                            text = "$%.2f".format(movie.price),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }
@@ -663,59 +676,103 @@ fun SeatSelectionScreen(movie: Movie, time: String, onNavigateBack: () -> Unit, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentScreen(onNavigateBack: () -> Unit, onConfirmPayment: () -> Unit) {
+fun PaymentScreen(
+    movie: Movie,
+    selectedSeatIds: String,
+    onNavigateBack: () -> Unit,
+    onConfirmPayment: () -> Unit
+) {
     var cardNumber by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var cvv by remember { mutableStateOf("") }
+
     val isFormValid by remember(cardNumber, expiryDate, cvv) {
         mutableStateOf(
             cardNumber.length == 16 &&
-            expiryDate.length == 4 &&
-            cvv.length == 3
+                    expiryDate.length == 4 &&
+                    cvv.length == 3
         )
     }
 
+    val seatCount = selectedSeatIds.split(",").filter { it.isNotBlank() }.size
+    val totalPrice = movie.price * seatCount
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Simulación de Pago") }, navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+            TopAppBar(
+                title = { Text("Simulación de Pago") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
                 }
-            })
+            )
         }
-    ) {
-        Column(modifier = Modifier
-            .padding(it)
-            .padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()), // Para evitar desbordes en pantallas pequeñas
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // resumen de compra
+            Text("Resumen de tu Compra", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Película: ${movie.title}", fontWeight = FontWeight.SemiBold)
+                    Text("Boletos: $seatCount")
+                    Text("Total a Pagar:", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "$%.2f".format(totalPrice),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
             Text("Transbank", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF005EB8))
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+
+
             OutlinedTextField(
                 value = cardNumber,
-                onValueChange = { if (it.length <= 16) cardNumber = it },
+                onValueChange = { if (it.all { char -> char.isDigit() } && it.length <= 16) cardNumber = it },
                 label = { Text("Número de Tarjeta") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                visualTransformation = CardNumberVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = CardNumberVisualTransformation()
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
                     value = expiryDate,
-                    onValueChange = { if (it.length <= 4) expiryDate = it },
+                    onValueChange = { if (it.all { char -> char.isDigit() } && it.length <= 4) expiryDate = it },
                     label = { Text("MM/AA") },
-                    visualTransformation = ExpiryDateVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+
+                    visualTransformation = ExpiryDateVisualTransformation()
                 )
                 OutlinedTextField(
                     value = cvv,
-                    onValueChange = { if (it.length <= 3) cvv = it },
+                    onValueChange = { if (it.all { char -> char.isDigit() } && it.length <= 3) cvv = it },
                     label = { Text("CVV") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    // Esto oculta los números del CVV
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
+
             Button(
                 onClick = onConfirmPayment,
                 modifier = Modifier.fillMaxWidth(),
@@ -795,6 +852,11 @@ class ExpiryDateVisualTransformation : VisualTransformation {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFinish: () -> Unit) {
+
+    // Volvemos a calcular el total para mostrarlo
+    val seatCount = selectedSeatIds.split(",").filter { it.isNotBlank() }.size
+    val totalPrice = movie.price * seatCount
+
     Scaffold(
         topBar = { TopAppBar(title = { Text("¡Compra Exitosa!") }) },
         bottomBar = {
@@ -813,10 +875,6 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(imageVector = Icons.Default.Done, contentDescription = "Éxito", tint = Color(0xFF007A33), modifier = Modifier.size(80.dp))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("¡Disfruta la función!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(24.dp))
             Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(4.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Película: ${movie.title}", style = MaterialTheme.typography.titleLarge)
@@ -824,6 +882,10 @@ fun ConfirmationScreen(movie: Movie, time: String, selectedSeatIds: String, onFi
                     Text("Hora: $time", style = MaterialTheme.typography.bodyLarge)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Asientos: $selectedSeatIds", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // --- AÑADIMOS EL TOTAL PAGADO ---
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text("Total Pagado: $%.2f".format(totalPrice), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 }
             }
         }
