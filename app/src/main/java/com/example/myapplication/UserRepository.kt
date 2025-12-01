@@ -134,7 +134,7 @@ class UserRepository(private val context: Context) {
         try {
             userDao.updateProfileImage(email, imageUri)
         } catch (e: Exception) {
-            // Error silencioso
+            
         }
     }
 
@@ -143,7 +143,7 @@ class UserRepository(private val context: Context) {
         try {
             purchaseDao.insertPurchase(purchase.toPurchaseEntity())
         } catch (e: Exception) {
-            // Error silencioso
+
         }
     }
 
